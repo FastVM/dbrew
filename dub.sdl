@@ -1,0 +1,5 @@
+name "dbrew"
+description "Dlang Ebrew"
+authors "Shaw Summa"
+copyright "Copyright © 2022, Shaw Summa"
+license "MIT"

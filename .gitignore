@@ -1,0 +1,15 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/dbrew
+dbrew.so
+dbrew.dylib
+dbrew.dll
+dbrew.a
+dbrew.lib
+dbrew-test-*
+*.exe
+*.o
+*.obj
+*.lst
