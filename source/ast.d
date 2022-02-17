@@ -1,4 +1,4 @@
-module dbrew.ast;
+module brew.ast;
 
 import std.algorithm;
 import std.conv;

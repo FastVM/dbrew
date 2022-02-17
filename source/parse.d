@@ -4,7 +4,7 @@ import std.ascii;
 import std.string;
 import std.conv;
 import std.stdio;
-import dbrew.ast;
+import brew.ast;
 
 class ParseError : Exception
 {
@@ -350,11 +350,6 @@ scope(exit) defs = oldDefs;
                 type.isFunc = true;
             }
         }
-        // else if (!state.done && state.first == ')')
-        // {
-        //     raise("unexpected close paren");
-        //     assert(false);
-        // }
         if (name.length == 0)
         {
             raise("expression expected");
@@ -365,9 +360,9 @@ scope(exit) defs = oldDefs;
         case "addr":
             return new Form("addr", readExprMatch(Binding.none));
         case "or":
-            return new Form("||", readExprMatch(type), readExprMatch(type));
+            return new Form("or", readExprMatch(type), readExprMatch(type));
         case "and":
-            return new Form("&&", readExprMatch(type), readExprMatch(type));
+            return new Form("and", readExprMatch(type), readExprMatch(type));
         case "do":
             return new Form("do", readExprMatch(type), readExprMatch(type));
         case "if":
@@ -445,23 +440,20 @@ scope(exit) defs = oldDefs;
         {
             defs[val.name] = val;
         }
+        Node[] argNames;
+        foreach (val; vals)
+        {
+            argNames ~= cast(Node) new Ident(val.name);
+        }
         skipSpace;
         if (state.first == '?')
         {
             state.skip;
-            return new Form("do");
-            // return new Form("extern", [new Form(fname), new Form("args", vals)]);
+            return new Form("extern", new Ident(fname), argNames);
         }
         else
         {
-            Node[] argNames;
-            foreach (val; vals)
-            {
-                argNames ~= cast(Node) new Ident(val.name);
-            }
-            Node args = new Form("args", new Ident(fname), argNames);
-            Node expr = readExprMatch(Binding.none);
-            return new Form("set", args, new Form("return", expr));
+            return new Form("function", new Ident(fname), argNames, readExprMatch(Binding.none));
         }
     }
 
@@ -477,6 +469,6 @@ scope(exit) defs = oldDefs;
             }
             all ~= readDef;
         }
-        return new Form("do", all);
+        return new Form("program", all);
     }
 }
