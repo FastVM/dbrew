@@ -1,0 +1,3 @@
+[submodule "ebrew"]
+	path = ebrew
+	url = https://github.com/shawsumma/ebrew

@@ -13,6 +13,4 @@ dbrew-test-*
 *.o
 *.obj
 *.lst
-a.out
-out.c
-out.fmt.c
+bin

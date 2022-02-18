@@ -5,120 +5,7 @@ import std.conv;
 import brew.ast;
 
 enum ebrewPre = `
-#include <unistd.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <errno.h>
-
 typedef __SIZE_TYPE__ value_t;
-
-value_t eb_stdin(value_t p, value_t n) {
-    char *ptr = (void *)p;
-    value_t d = 0;
-    while (d < n) {
-        ptr[d] = getchar();
-        if (ptr[d] == '\0' || feof(stdin)) {
-            break;
-        }
-        d += 1;
-    }
-    return d;
-}
-
-value_t eb_stdout(value_t p, value_t n) {
-    return fprintf(stdout, "%.*s", n, p);
-}
-
-value_t eb_stderr(value_t p, value_t n) {
-    return fprintf(stderr, "%.*s", n, p);
-}
-
-value_t eb_exit(value_t n) {
-    exit(n);
-}
-
-value_t eb_malloc(value_t a) {
-    return malloc(a);
-}
-
-value_t eb_debug49(value_t a) {
-    printf("[[[%s]]]\n", strerror(errno));
-    printf("t: %zu\n", a);
-    return a;
-}
-
-value_t eb_debug49c(value_t a) {
-    printf("[%c]", a);
-    return a;
-}
-
-value_t eb_load(value_t a) {
-    return *(value_t *)a;
-}
-
-value_t eb_store(value_t a, value_t b) {
-    *(value_t *)a = b;
-    return 0;
-}
-
-value_t eb_peek(value_t a) {
-    return *(uint8_t *)a;
-}
-
-value_t eb_poke(value_t a, value_t b) {
-    *(uint8_t *)a = b;
-    return 0;
-}
-
-value_t eb_add(value_t x, value_t y) {
-    return x + y;
-}
-
-value_t eb_sub(value_t x, value_t y) {
-    return x - y;
-}
-
-value_t eb_mul(value_t x, value_t y) {
-    return x * y;
-}
-
-value_t eb_div(value_t x, value_t y) {
-    return x / y;
-}
-
-value_t eb_mod(value_t x, value_t y) {
-    return x % y;
-}
-
-value_t eb_shl(value_t x, value_t y) {
-    return y << x;
-}
-
-value_t eb_cmpa(value_t x, value_t y) {
-    return x < y;
-}
-
-value_t eb_cmpe(value_t x, value_t y) {
-    return x == y;
-}
-
-value_t eb_ne(value_t x, value_t y) {
-    return x != y;
-}
-
-value_t eb_neg(value_t x) {
-    __PTRDIFF_TYPE__ *y = (__PTRDIFF_TYPE__*)&x;
-    *y = - *y;
-    return *(value_t *)y;
-}
-
-value_t eb_not(value_t x) {
-    return !x;
-}
-
-value_t eb_linux(size_t rdi, size_t rsi, size_t rdx, size_t rcx, size_t r8, size_t r9, size_t rax) {
-    return syscall(rax, rdi, rsi, rdx, rcx, r8, r9);
-}
 `;
 
 string compileType(Form form)
@@ -198,6 +85,7 @@ string compileType(Form form)
             {
                 ret ~= ",";
             }
+            ret ~= "(value_t)";
             ret ~= arg.compile;
         }
         ret ~= ")";
@@ -238,22 +126,15 @@ string compileType(Ident id)
 {
     if (id.repr == "_start")
     {
-        return "main";
+        return "_start";
     }
     string ret;
-    ret ~= "eb_";
+    ret ~= "f";
     foreach (chr; id.repr)
     {
-        if (chr == '_') {
-            ret ~= "_UNDERSCORE_";
-        } else if (chr == '-') {
-            ret ~= "_DASH_";
-        } else {
-            ret ~= chr; 
-        }
-        // ubyte n = chr.to!ubyte;
-        // ret ~= to!string(n / 16, 16);
-        // ret ~= to!string(n % 16, 16);
+        ubyte n = chr.to!ubyte;
+        ret ~= to!string(n / 16, 16);
+        ret ~= to!string(n % 16, 16);
     }
     return ret;
 }
