@@ -56,12 +56,9 @@ string compileType(Form form)
         }
         ret ~= ")";
         ret ~= "{";
-        // ret ~= "printf(\"+ " ~ name ~ "\\n\");";
-        ret ~= "value_t r=";
+        ret ~= "return ";
         ret ~= form.args[$ - 1].compile;
         ret ~= ";";
-        // ret ~= "printf(\"- " ~ name ~ "\\n\");";
-        ret ~= "return r;";
         ret ~= "}";
         return ret;
     case "call":

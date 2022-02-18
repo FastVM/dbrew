@@ -17,7 +17,7 @@ class ParseError : Exception
     }
 }
 
-class ParseState
+struct ParseState
 {
     string src;
     size_t line;
@@ -63,7 +63,7 @@ class ParseState
     }
 }
 
-class Binding
+struct Binding
 {
     string name;
     bool isFunc;
@@ -71,7 +71,7 @@ class Binding
 
     static Binding none()
     {
-        return new Binding(null);
+        return Binding(null);
     }
 
     this(string name)
@@ -98,7 +98,7 @@ class Binding
     }
 }
 
-class Parser
+struct Parser
 {
     enum string hasScope = `
 Binding[string] oldDefs = defs.dup;
@@ -107,10 +107,6 @@ scope(exit) defs = oldDefs;
 
     Binding[string] defs;
     ParseState state;
-
-    this()
-    {
-    }
 
     void raise(string msg)
     {
@@ -194,11 +190,11 @@ scope(exit) defs = oldDefs;
             skipSpace;
             if (state.first == '(')
             {
-                args ~= new Binding(name, readArgArray);
+                args ~= Binding(name, readArgArray);
             }
             else
             {
-                args ~= new Binding(name);
+                args ~= Binding(name);
             }
         }
         return args;
@@ -374,14 +370,14 @@ scope(exit) defs = oldDefs;
             Node value = readExprMatch(Binding.none);
             Ident id = new Ident(readName);
             mixin(hasScope);
-            defs[id.repr] = new Binding(id.repr);
+            defs[id.repr] = Binding(id.repr);
             Node inscope = readExprMatch(type);
             return new Form("let", id, value, inscope);
         case "for":
             Node value = readExprMatch(Binding.none);
             Ident id = new Ident(readName);
             mixin(hasScope);
-            defs[id.repr] = new Binding(id.repr);
+            defs[id.repr] = Binding(id.repr);
             Node inscope = readExprMatch(type);
             return new Form("for", id, value, inscope);
         default:
@@ -434,7 +430,7 @@ scope(exit) defs = oldDefs;
             raise("toplevel: expected a function name");
         }
         Binding[] vals = readArgArray;
-        defs[fname] = new Binding(fname, vals);
+        defs[fname] = Binding(fname, vals);
         mixin(hasScope);
         foreach (val; vals)
         {
