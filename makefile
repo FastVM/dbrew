@@ -8,6 +8,7 @@ CFLAGS += -fomit-frame-pointer
 
 COPT ?= $(OPT)
 LOPT ?= $(OPT)
+DOPT ?= $(OPT)
 
 CFLAGS += $(COPT)
 LFLAGS += $(LOPT)
@@ -25,7 +26,7 @@ bin/all.eb: ebrew/lib.eh ebrew/ebrew.eb
 	cat $^ > $@
 
 bin/dbrew: .dummy
-	$(DC) -i brew/app.d -ofbin/dbrew 
+	$(DC) $(DOPT) -i brew/app.d -ofbin/dbrew 
 
 bin/lib.o: lib.s
 	as -o $@ $^

@@ -4,13 +4,101 @@ import std.algorithm;
 import std.conv;
 import std.meta;
 
-/// any node, not valid in the ast
-class Node
+Form form(Args...)(Args args)
 {
+    return Form(args);
+}
+
+Ident ident(string name)
+{
+    return Ident(name);
+}
+
+Number num(size_t num)
+{
+    return Number(num);
+}
+
+String str(string str)
+{
+    return String(str);
+}
+
+Node node(Type)(Type arg)
+{
+    return Node(arg);
+}
+
+/// any node, not valid in the ast
+struct Node
+{
+    enum Type
+    {
+        form,
+        ident,
+        num,
+        str,
+    }
+
+    union Value
+    {
+        Form form;
+        Ident ident;
+        Number num;
+        String str;
+    }
+
+    Value value;
+    Type type;
+
+    this(Node other)
+    {
+        value = other.value;
+        type = other.type;
+    }
+
+    this(Form form)
+    {
+        value.form = form;
+        type = Type.form;
+    }
+
+    this(Ident ident)
+    {
+        value.ident = ident;
+        type = Type.ident;
+    }
+
+    this(Number num)
+    {
+        value.num = num;
+        type = Type.num;
+    }
+
+    this(String str)
+    {
+        value.str = str;
+        type = Type.str;
+    }
+
+    string toString()
+    {
+        final switch (type)
+        {
+        case Type.form:
+            return value.form.to!string;
+        case Type.ident:
+            return value.ident.to!string;
+        case Type.num:
+            return value.num.to!string;
+        case Type.str:
+            return value.str.to!string;
+        }
+    }
 }
 
 /// call of function or operator call
-final class Form : Node
+struct Form
 {
     string form;
     Node[] args;
@@ -19,12 +107,19 @@ final class Form : Node
     {
         static foreach (a; as)
         {
-            args ~= a;
+            static if (is(typeof(a) == Node[]))
+            {
+                args ~= a;
+            }
+            else
+            {
+                args ~= node(a);
+            }
         }
         form = f;
     }
 
-    override string toString()
+    string toString()
     {
         char[] ret;
         ret ~= "(";
@@ -39,29 +134,8 @@ final class Form : Node
     }
 }
 
-size_t usedSyms;
-
-Ident genSym()
-{
-    usedSyms++;
-    return new Ident("_purr_" ~ to!string(usedSyms - 1));
-}
-
-template ident(string name){
-    Ident value;
-
-    shared static this()
-    {
-        value = new Ident(name);
-    }
-
-    Ident ident() {
-        return value;
-    }
-}
-
 /// ident or number, detects at runtime
-final class Ident : Node
+struct Ident
 {
     string repr;
 
@@ -70,14 +144,14 @@ final class Ident : Node
         repr = s;
     }
 
-    override string toString()
+    string toString()
     {
         return repr;
     }
 }
 
 /// number value literal
-final class Number : Node
+struct Number
 {
     size_t value;
 
@@ -86,14 +160,14 @@ final class Number : Node
         value = v;
     }
 
-    override string toString()
+    string toString()
     {
         return "[" ~ value.to!string ~ "]";
     }
 }
 
 /// string value literal
-final class String : Node
+struct String
 {
     string value;
 
@@ -102,7 +176,7 @@ final class String : Node
         value = v;
     }
 
-    override string toString()
+    string toString()
     {
         return "[" ~ value.to!string ~ "]";
     }

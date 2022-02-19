@@ -138,7 +138,7 @@ string compileType(Ident id)
 
 string compileType(Number num)
 {
-    return num.value.to!string;
+    return num.value.to!string ~ "U";
 }
 
 string compileType(String str)
@@ -159,21 +159,15 @@ string compileType(String str)
 
 string compile(Node node)
 {
-    if (Form form = cast(Form) node)
+    final switch (node.type)
     {
-        return compileType(form);
+    case Node.Type.form:
+        return compileType(node.value.form);
+    case Node.Type.ident:
+        return compileType(node.value.ident);
+    case Node.Type.num:
+        return compileType(node.value.num);
+    case Node.Type.str:
+        return compileType(node.value.str);
     }
-    if (Ident id = cast(Ident) node)
-    {
-        return compileType(id);
-    }
-    if (Number num = cast(Number) node)
-    {
-        return compileType(num);
-    }
-    if (String str = cast(String) node)
-    {
-        return compileType(str);
-    }
-    assert(false);
 }

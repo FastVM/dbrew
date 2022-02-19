@@ -258,7 +258,7 @@ scope(exit) defs = oldDefs;
                 }
             }
             state.skip;
-            return new String(value);
+            return str(value).node;
         }
         if (state.first == '\'')
         {
@@ -305,7 +305,7 @@ scope(exit) defs = oldDefs;
             {
                 state.skip;
             }
-            return new Number(chr.to!size_t);
+            return num(chr.to!size_t).node;
         }
         bool startsOpenParen = false;
         while (state.first == '(')
@@ -354,36 +354,36 @@ scope(exit) defs = oldDefs;
         switch (name)
         {
         case "addr":
-            return new Form("addr", readExprMatch(Binding.none));
+            return form("addr", readExprMatch(Binding.none)).node;
         case "or":
-            return new Form("or", readExprMatch(type), readExprMatch(type));
+            return form("or", readExprMatch(type), readExprMatch(type)).node;
         case "and":
-            return new Form("and", readExprMatch(type), readExprMatch(type));
+            return form("and", readExprMatch(type), readExprMatch(type)).node;
         case "do":
-            return new Form("do", readExprMatch(type), readExprMatch(type));
+            return form("do", readExprMatch(type), readExprMatch(type)).node;
         case "if":
-            return new Form("if",
+            return form("if",
                 readExprMatch(Binding.none), readExprMatch(type),
                 readExprMatch(type)
-            );
+            ).node;
         case "let":
             Node value = readExprMatch(Binding.none);
-            Ident id = new Ident(readName);
+            Ident id = ident(readName);
             mixin(hasScope);
             defs[id.repr] = Binding(id.repr);
             Node inscope = readExprMatch(type);
-            return new Form("let", id, value, inscope);
+            return form("let", id, value, inscope).node;
         case "for":
             Node value = readExprMatch(Binding.none);
-            Ident id = new Ident(readName);
+            Ident id = ident(readName);
             mixin(hasScope);
             defs[id.repr] = Binding(id.repr);
             Node inscope = readExprMatch(type);
-            return new Form("for", id, value, inscope);
+            return form("for", id, value, inscope).node;
         default:
             if (type.isFunc)
             {
-                return new Ident(name);
+                return ident(name).node;
             }
             else
             {
@@ -399,21 +399,21 @@ scope(exit) defs = oldDefs;
             if (argTypesPtr.isFunc)
             {
                 Binding[] argTypes = argTypesPtr.args;
-                Node[] argValues = [new Ident(name)];
+                Node[] argValues = [ident(name).node];
                 foreach (argType; argTypes)
                 {
                     argValues ~= readExprMatch(argType);
                 }
-                return new Form("call", argValues);
+                return form("call", argValues).node;
             }
             else
             {
-                return new Ident(name);
+                return ident(name).node;
             }
         }
         if (name.isNumeric)
         {
-            return new Number(name.to!size_t);
+            return num(name.to!size_t).node;
         }
         else
         {
@@ -439,17 +439,17 @@ scope(exit) defs = oldDefs;
         Node[] argNames;
         foreach (val; vals)
         {
-            argNames ~= cast(Node) new Ident(val.name);
+            argNames ~= cast(Node) ident(val.name);
         }
         skipSpace;
         if (state.first == '?')
         {
             state.skip;
-            return new Form("extern", new Ident(fname), argNames);
+            return form("extern", ident(fname), argNames).node;
         }
         else
         {
-            return new Form("function", new Ident(fname), argNames, readExprMatch(Binding.none));
+            return form("function", ident(fname), argNames, readExprMatch(Binding.none)).node;
         }
     }
 
@@ -465,6 +465,6 @@ scope(exit) defs = oldDefs;
             }
             all ~= readDef;
         }
-        return new Form("program", all);
+        return form("program", all).node;
     }
 }
