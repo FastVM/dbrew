@@ -2,9 +2,20 @@ module brew.comp;
 
 import std.stdio;
 import std.conv;
+import std.algorithm;
 import brew.ast;
 
-enum ebrewPre = `typedef __SIZE_TYPE__ value_t;`;
+enum ebrewPre = `
+#define EB_AND(lhs_,rhs_)({value_t a=(lhs_);a?(rhs_):a;})
+#define EB_OR(lhs_,rhs_)({value_t a=(lhs_);a?a:(rhs_);})
+typedef __SIZE_TYPE__ value_t;`;
+
+size_t n = 0;
+string genSym()
+{
+    n += 1;
+    return 't' ~ n.to!string;
+}
 
 string compileType(Form form)
 {
@@ -32,7 +43,7 @@ string compileType(Form form)
         foreach (arg; form.args)
         {
             ret ~= arg.compile;
-            if (ret[$-1] != ';')
+            if (ret[$ - 1] != ';')
             {
                 ret ~= ";";
             }
@@ -72,13 +83,13 @@ string compileType(Form form)
         }
         else
         {
-            foreach (index, arg; form.args[1..$])
+            foreach (index, arg; form.args[1 .. $])
             {
                 if (index != 0)
                 {
                     ret ~= ",";
                 }
-                ret ~= arg.compile; 
+                ret ~= arg.compile;
             }
         }
         ret ~= ")";
@@ -107,7 +118,7 @@ string compileType(Form form)
         ret ~= ")";
         ret ~= "{";
         ret ~= form.args[$ - 1].compile;
-        if (ret[$-1] != ';')
+        if (ret[$ - 1] != ';')
         {
             ret ~= ";";
         }
@@ -136,12 +147,28 @@ string compileType(Form form)
         ret ~= ";";
         return ret;
     case Form.Type.let:
-        return "({value_t " ~ form.args[0].compile ~ "=" ~ form.args[1].compile ~ ";" ~ form
-            .args[2].compile ~ ";})";
+        assert(false);
+        // return "({value_t " ~ form.args[0].compile ~ "=" ~ form.args[1].compile ~ ";" ~ form
+        //     .args[2].compile ~ ";})";
     case Form.Type.and:
-        return "({value_t a=" ~ form.args[0].compile ~ ";a?" ~ form.args[1].compile ~ ":a;})";
+        return "EB_AND(" ~ form.args[0].compile ~ "," ~ form.args[1].compile ~ ")";
     case Form.Type.or:
-        return "({value_t a=" ~ form.args[0].compile ~ ";a?a:" ~ form.args[1].compile ~ ";})";
+        return "EB_OR(" ~ form.args[0].compile ~ "," ~ form.args[1].compile ~ ")";
+    case Form.Type.retfor:
+        string name = form.args[0].compile;
+        string ret;
+        ret ~= "value_t ";
+        ret ~= name;
+        ret ~= "=";
+        ret ~= form.args[1].compile;
+        ret ~= ";for(;;){value_t t=";
+        ret ~= form.args[2].compile;
+        ret ~= ";if(t == 0){return ";
+        ret ~= name;
+        ret ~= ";}";
+        ret ~= name;
+        ret ~= "=t;}";
+        return ret;
     case Form.Type.for_:
         string name = form.args[0].compile;
         string ret;
@@ -195,14 +222,22 @@ string compileType(Number num)
 string compileType(String str)
 {
     string ret;
-    ret ~= "(value_t)(void*)";
+    ret ~= "(value_t)";
     ret ~= '"';
     foreach (chr; str.value)
     {
-        ret ~= "\\x";
-        ubyte n = chr.to!ubyte;
-        ret ~= to!string(n / 16, 16);
-        ret ~= to!string(n % 16, 16);
+        char c = cast(char) chr;
+        if (!"\\\"".canFind(c))
+        {
+            ret ~= c;
+        }
+        else
+        {
+            ret ~= "\\x";
+            ubyte n = chr.to!ubyte;
+            ret ~= to!string(n / 16, 16);
+            ret ~= to!string(n % 16, 16);
+        }
     }
     ret ~= '"';
     return ret;

@@ -38,12 +38,6 @@ Node optStmt(Node val)
             }
             return form(Form.Type.vblock, all).node;
         }
-        // Node[] args;
-        // foreach (arg; val.value.form.args)
-        // {
-        //     args ~= arg.opt;
-        // }
-        // return form(val.value.form.form, args).node;
     }
     return val.opt;
 }
@@ -78,6 +72,11 @@ Node opt(Node val)
                     Node[] args = res.value.form.args;
                     return form(Form.Type.let, args[0], args[1].opt, form(Form.Type.ret, args[2].opt)
                             .node.optStmt).node.opt;
+                }
+                if (res.value.form.form == Form.Type.for_)
+                {
+                    Node[] args = res.value.form.args;
+                    return form(Form.Type.retfor, args[0], args[1].opt, args[2].opt).node;
                 }
             }
             return form(Form.Type.ret, res).node;

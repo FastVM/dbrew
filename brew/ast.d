@@ -119,6 +119,7 @@ struct Form
         vvar,
         vif,
         ret,
+        retfor,
     }
     Type form;
     Node[] args;
