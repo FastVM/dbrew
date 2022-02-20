@@ -9,7 +9,5 @@ fib (n)
             fib sub n 1
         n
 
-fib0 () fib 30
-fib1 () fib 30
-fib2 () fib 30
-fib3 () fib 30
+main () fib 25
+ 

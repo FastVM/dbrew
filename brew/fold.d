@@ -19,7 +19,7 @@ struct Folder
     {
         switch (toFold.form)
         {
-        case "call":
+        case Form.Type.call:
             Ident first = toFold.args[0].value.ident;
             Node[] args;
             foreach (arg; toFold.args[1..$])
@@ -102,7 +102,7 @@ struct Folder
                 }
             }
             return form(toFold.form, first, args).node;
-        case "and":
+        case Form.Type.and:
             Node lhs = fold(toFold.args[0], locals);
             if (lhs.type == Node.Type.num)
             {
@@ -117,9 +117,9 @@ struct Folder
             }
             else
             {
-                return form("and", lhs, fold(toFold.args[1], locals)).node;
+                return form(Form.Type.and, lhs, fold(toFold.args[1], locals)).node;
             }
-        case "or":
+        case Form.Type.or:
             Node lhs = fold(toFold.args[0], locals);
             if (lhs.type == Node.Type.num)
             {
@@ -134,9 +134,9 @@ struct Folder
             }
             else
             {
-                return form("or", lhs, fold(toFold.args[1], locals)).node;
+                return form(Form.Type.or, lhs, fold(toFold.args[1], locals)).node;
             }
-        case "if":
+        case Form.Type.if_:
             Node cond = fold(toFold.args[0], locals);
             if (cond.type == Node.Type.num)
             {
@@ -151,21 +151,13 @@ struct Folder
             }
             else
             {
-                return form("if", cond, fold(toFold.args[1], locals), fold(toFold.args[2], locals)).node;
+                return form(Form.Type.if_, cond, fold(toFold.args[1], locals), fold(toFold.args[2], locals)).node;
             }
-        case "let":
+        case Form.Type.let:
             Ident id = toFold.args[0].value.ident;
             Node value = fold(toFold.args[1], locals);
             Node then = fold(toFold.args[2], locals);
-            return form("let", id, value, then).node;
-        case "program":
-            Node[] args;
-            foreach (ref arg; toFold.args)
-            {
-                Number[string] nextLocals;
-                args ~= fold(arg, nextLocals);
-            }
-            return form(toFold.form, args).node;
+            return form(Form.Type.let, id, value, then).node;
         default:
             Node[] args;
             foreach (arg; toFold.args)
@@ -222,20 +214,20 @@ struct Folder
     {
         switch (toMark.form)
         {
-        case "program":
+        case Form.Type.program:
             foreach (arg; toMark.args)
             {
                 mark(arg);
             }
             return false;
-        case "extern":
+        case Form.Type.extern_:
             Ident id = toMark.args[0].value.ident;
             if (id.repr != "add" && id.repr != "sub" && id.repr != "mul" && id.repr != "div" && id.repr != "mod" && id.repr != "shl" && id.repr != "cmpa" && id.repr != "cmpe")
             { 
                 nonFuncs ~= id.repr;
             }
             return false;
-        case "function":
+        case Form.Type.func:
             Ident id = toMark.args[0].value.ident;
             if (mark(toMark.args[$ - 1]))
             {

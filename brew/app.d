@@ -16,7 +16,7 @@ void main(string[] args) {
 	Node ast = parser.readDefs();
 	Folder folder;
 	folder.mark(ast);
-	Node folded = folder.foldAll(ast);
-	string res = compile(folded);
+	ast = folder.foldAll(ast);
+	string res = compile(ast);
 	writeFile(args[2], cast(void[]) res);
 }

@@ -354,15 +354,15 @@ scope(exit) defs = oldDefs;
         switch (name)
         {
         case "addr":
-            return form("addr", readExprMatch(Binding.none)).node;
+            return form(Form.Type.addr, readExprMatch(Binding.none)).node;
         case "or":
-            return form("or", readExprMatch(type), readExprMatch(type)).node;
+            return form(Form.Type.or, readExprMatch(type), readExprMatch(type)).node;
         case "and":
-            return form("and", readExprMatch(type), readExprMatch(type)).node;
+            return form(Form.Type.and, readExprMatch(type), readExprMatch(type)).node;
         case "do":
-            return form("do", readExprMatch(type), readExprMatch(type)).node;
+            return form(Form.Type.do_, readExprMatch(type), readExprMatch(type)).node;
         case "if":
-            return form("if",
+            return form(Form.Type.if_,
                 readExprMatch(Binding.none), readExprMatch(type),
                 readExprMatch(type)
             ).node;
@@ -372,14 +372,14 @@ scope(exit) defs = oldDefs;
             mixin(hasScope);
             defs[id.repr] = Binding(id.repr);
             Node inscope = readExprMatch(type);
-            return form("let", id, value, inscope).node;
+            return form(Form.Type.let, id, value, inscope).node;
         case "for":
             Node value = readExprMatch(Binding.none);
             Ident id = ident(readName);
             mixin(hasScope);
             defs[id.repr] = Binding(id.repr);
             Node inscope = readExprMatch(type);
-            return form("for", id, value, inscope).node;
+            return form(Form.Type.for_, id, value, inscope).node;
         default:
             if (type.isFunc)
             {
@@ -404,7 +404,7 @@ scope(exit) defs = oldDefs;
                 {
                     argValues ~= readExprMatch(argType);
                 }
-                return form("call", argValues).node;
+                return form(Form.Type.call, argValues).node;
             }
             else
             {
@@ -445,11 +445,11 @@ scope(exit) defs = oldDefs;
         if (state.first == '?')
         {
             state.skip;
-            return form("extern", ident(fname), argNames).node;
+            return form(Form.Type.extern_, ident(fname), argNames).node;
         }
         else
         {
-            return form("function", ident(fname), argNames, readExprMatch(Binding.none)).node;
+            return form(Form.Type.func, ident(fname), argNames, readExprMatch(Binding.none)).node;
         }
     }
 
@@ -465,6 +465,6 @@ scope(exit) defs = oldDefs;
             }
             all ~= readDef;
         }
-        return form("program", all).node;
+        return form(Form.Type.program, all).node;
     }
 }

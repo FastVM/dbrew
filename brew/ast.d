@@ -100,10 +100,24 @@ struct Node
 /// call of function or operator call
 struct Form
 {
-    string form;
+    enum Type
+    {
+        addr,
+        or,
+        and,
+        do_,
+        if_,
+        let,
+        for_,
+        call,
+        extern_,
+        func,
+        program,
+    }
+    Type form;
     Node[] args;
 
-    this(Args...)(string f, Args as)
+    this(Args...)(Type f, Args as)
     {
         static foreach (a; as)
         {

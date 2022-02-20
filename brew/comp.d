@@ -4,24 +4,22 @@ import std.stdio;
 import std.conv;
 import brew.ast;
 
-enum ebrewPre = `
-typedef __SIZE_TYPE__ value_t;
-`;
+enum ebrewPre = `typedef __SIZE_TYPE__ value_t;`;
 
 string compileType(Form form)
 {
-    switch (form.form)
+    final switch (form.form)
     {
-    case "program":
+    case Form.Type.program:
         string ret = ebrewPre;
         foreach (arg; form.args)
         {
             ret ~= arg.compile;
         }
         return ret;
-    case "do":
+    case Form.Type.do_:
         return "({" ~ form.args[0].compile ~ ";" ~ form.args[1].compile ~ ";})";
-    case "extern":
+    case Form.Type.extern_:
         string ret;
         ret ~= "value_t ";
         ret ~= form.args[0].compile;
@@ -38,7 +36,7 @@ string compileType(Form form)
         }
         ret ~= ");";
         return ret;
-    case "function":
+    case Form.Type.func:
         string name = form.args[0].compile;
         string ret;
         ret ~= "value_t ";
@@ -61,7 +59,7 @@ string compileType(Form form)
         ret ~= ";";
         ret ~= "}";
         return ret;
-    case "call":
+    case Form.Type.call:
         string ret;
         ret ~= "((value_t(*)(";
         foreach (i; 1 .. form.args.length)
@@ -87,14 +85,14 @@ string compileType(Form form)
         }
         ret ~= ")";
         return ret;
-    case "let":
+    case Form.Type.let:
         return "({value_t " ~ form.args[0].compile ~ "=" ~ form.args[1].compile ~ ";" ~ form
             .args[2].compile ~ ";})";
-    case "and":
+    case Form.Type.and:
         return "({value_t a=" ~ form.args[0].compile ~ ";a?" ~ form.args[1].compile ~ ":a;})";
-    case "or":
+    case Form.Type.or:
         return "({value_t a=" ~ form.args[0].compile ~ ";a?a:" ~ form.args[1].compile ~ ";})";
-    case "for":
+    case Form.Type.for_:
         string name = form.args[0].compile;
         string ret;
         ret ~= "({value_t ";
@@ -109,13 +107,11 @@ string compileType(Form form)
         ret ~= name;
         ret ~= ";})";
         return ret;
-    case "if":
+    case Form.Type.if_:
         return "((" ~ form.args[0].compile ~ ")?(" ~ form.args[1].compile ~ "):(" ~ form
             .args[2].compile ~ "))";
-    case "addr":
+    case Form.Type.addr:
         return "((value_t)&" ~ form.args[0].compile ~ ")";
-    default:
-        assert(false, form.form);
     }
 }
 
