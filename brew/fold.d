@@ -32,32 +32,21 @@ struct Folder
                 {
                     Number lhs = args[0].value.num;
                     Number rhs = args[1].value.num;
-                    if (first.repr == "add")
+                    switch (first.repr)
                     {
+                    case "add":
                         return num(lhs.value + rhs.value).node;
-                    }
-                    if (first.repr == "sub")
-                    {
+                    case "sub":
                         return num(lhs.value - rhs.value).node;
-                    }
-                    if (first.repr == "mul")
-                    {
+                    case "mul":
                         return num(lhs.value * rhs.value).node;
-                    }
-                    if (first.repr == "div")
-                    {
+                    case "div":
                         return num(lhs.value / rhs.value).node;
-                    }
-                    if (first.repr == "mod")
-                    {
+                    case "mod":
                         return num(lhs.value % rhs.value).node;
-                    }
-                    if (first.repr == "shl")
-                    {
+                    case "shl":
                         return num(rhs.value << lhs.value).node;
-                    }
-                    if (first.repr == "cmpe")
-                    {
+                    case "cmpe":
                         if (lhs.value == rhs.value)
                         {
                             return num(1).node;
@@ -66,9 +55,7 @@ struct Folder
                         {
                             return num(0).node;
                         }
-                    }
-                    if (first.repr == "cmpa")
-                    {
+                    case "cmpa":
                         if (lhs.value <= rhs.value)
                         {
                             return num(1).node;
@@ -77,6 +64,8 @@ struct Folder
                         {
                             return num(0).node;
                         }
+                    default:
+                        break;
                     }
                 }
             }
@@ -101,7 +90,7 @@ struct Folder
                     return fold(func.then, nextLocals);
                 }
             }
-            return form(toFold.form, first, args).node;
+            return form(Form.Type.call, first, args).node;
         case Form.Type.and:
             Node lhs = fold(toFold.args[0], locals);
             if (lhs.type == Node.Type.num)
@@ -234,9 +223,10 @@ struct Folder
                 string[] args;
                 foreach (name; toMark.args[1 .. $ - 1])
                 {
-                    args ~= name.value.ident.repr;
+                    args ~= name.value.form.args[0].value.ident.repr;
                 }
-                funcs[id.repr] = Func(args, toMark.args[$ - 1]);
+                Node retv = toMark.args[$ - 1].value.form.args[0];
+                funcs[id.repr] = Func(args, retv);
                 return false;
             }
             else

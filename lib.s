@@ -1,102 +1,102 @@
 .globl _start
 .equ _start,f5F7374617274
-.globl f6C6F6164
-.section .text.f6C6F6164
-f6C6F6164:
+.globl eb_load
+.section .text.eb_load
+eb_load:
 mov (%rdi),%rax
 ret
-.globl f73746F7265
-.section .text.f73746F7265
-f73746F7265:
+.globl eb_store
+.section .text.eb_store
+eb_store:
 mov %rsi,(%rdi)
 ret
-.globl f7065656B
-.section .text.f7065656B
-f7065656B:
+.globl eb_peek
+.section .text.eb_peek
+eb_peek:
 movzb (%rdi),%eax
 ret
-.globl f706F6B65
-.section .text.f706F6B65
-f706F6B65:
+.globl eb_poke
+.section .text.eb_poke
+eb_poke:
 movb %sil,(%rdi)
 ret
-.globl f616464
-.section .text.f616464
-f616464:
+.globl eb_add
+.section .text.eb_add
+eb_add:
 mov %rsi,%rax
 add %rdi,%rax
 ret
-.globl f737562
-.section .text.f737562
-f737562:
+.globl eb_sub
+.section .text.eb_sub
+eb_sub:
 mov %rsi,%rax
 sub %rdi,%rax
 ret
-.globl f6D756C
-.section .text.f6D756C
-f6D756C:
+.globl eb_mul
+.section .text.eb_mul
+eb_mul:
 mov %rsi,%rax
 mul %rdi
 ret
-.globl f646976
-.section .text.f646976
-f646976:
+.globl eb_div
+.section .text.eb_div
+eb_div:
 xor %edx,%edx
 mov %rsi,%rax
 div %rdi
 ret
-.globl f6D6F64
-.section .text.f6D6F64
-f6D6F64:
+.globl eb_mod
+.section .text.eb_mod
+eb_mod:
 xor %edx,%edx
 mov %rsi,%rax
 div %rdi
 mov %rdx,%rax
 ret
-.globl f73686C
-.section .text.f73686C
-f73686C:
+.globl eb_shl
+.section .text.eb_shl
+eb_shl:
 mov %rsi,%rax
 mov %rdi,%rcx
 shl %cl,%rax
 ret
-.globl f636D7061
-.section .text.f636D7061
-f636D7061:
+.globl eb_cmpa
+.section .text.eb_cmpa
+eb_cmpa:
 cmp %rdi,%rsi
 seta %al
 movzbl %al,%eax
 ret
-.globl f636D7065
-.section .text.f636D7065
-f636D7065:
+.globl eb_cmpe
+.section .text.eb_cmpe
+eb_cmpe:
 cmp %rsi,%rdi
 sete %al
 movzbl %al,%eax
 ret
-.globl f6E65
-.section .text.f6E65
-f6E65:
+.globl eb_ne
+.section .text.eb_ne
+eb_ne:
 cmp %rsi,%rdi
 setne %al
 movzbl %al,%eax
 ret
-.globl f6E6567
-.section .text.f6E6567
-f6E6567:
+.globl eb_neg
+.section .text.eb_neg
+eb_neg:
 mov %rdi,%rax
 neg %rax
 ret
-.globl f6E6F74
-.section .text.f6E6F74
-f6E6F74:
+.globl eb_not
+.section .text.eb_not
+eb_not:
 test %rdi,%rdi
 sete %al
 movzbl %al,%eax
 ret
-.globl f6C696E7578
-.section .text.f6C696E7578
-f6C696E7578:
+.globl eb_linux
+.section .text.eb_linux
+eb_linux:
 mov 8(%rsp),%rax
 syscall
 ret

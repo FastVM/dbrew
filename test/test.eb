@@ -9,5 +9,5 @@ fib (n)
             fib sub n 1
         n
 
-main () fib 25
+main () fib 30
  

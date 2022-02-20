@@ -5,6 +5,7 @@ import std.array;
 import brew.parse;
 import brew.comp;
 import brew.ast;
+import brew.opt;
 import brew.fold;
 
 void main(string[] args) {
@@ -14,9 +15,10 @@ void main(string[] args) {
 	Parser parser = Parser();
 	parser.state = ParseState(args[1].readFile);
 	Node ast = parser.readDefs();
-	Folder folder;
-	folder.mark(ast);
-	ast = folder.foldAll(ast);
+	// Folder folder;
+	// folder.mark(ast);
+	// ast = folder.foldAll(ast);
+	// ast = opt(ast);
 	string res = compile(ast);
 	writeFile(args[2], cast(void[]) res);
 }

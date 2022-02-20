@@ -96,6 +96,23 @@ struct Binding
             arg.toString(sink);
         }
     }
+
+    Node toType()
+    {
+        if (isFunc)
+        {
+            Node[] aargs;
+            foreach (arg; args)
+            {
+                aargs ~= arg.toType;
+            }
+            return form(Form.Type.tfunc, ident(name), aargs).node;
+        }
+        else
+        {
+            return form(Form.Type.tvalue, ident(name)).node;
+        }
+    }
 }
 
 struct Parser
@@ -439,7 +456,7 @@ scope(exit) defs = oldDefs;
         Node[] argNames;
         foreach (val; vals)
         {
-            argNames ~= cast(Node) ident(val.name);
+            argNames ~= val.toType;
         }
         skipSpace;
         if (state.first == '?')
@@ -449,7 +466,7 @@ scope(exit) defs = oldDefs;
         }
         else
         {
-            return form(Form.Type.func, ident(fname), argNames, readExprMatch(Binding.none)).node;
+            return form(Form.Type.func, ident(fname), argNames, form(Form.Type.ret, readExprMatch(Binding.none))).node;
         }
     }
 

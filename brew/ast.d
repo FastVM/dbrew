@@ -113,6 +113,12 @@ struct Form
         extern_,
         func,
         program,
+        tvalue,
+        tfunc,
+        vblock,
+        vvar,
+        vif,
+        ret,
     }
     Type form;
     Node[] args;
