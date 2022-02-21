@@ -13,7 +13,7 @@ DOPT ?= $(OPT)
 CFLAGS += $(COPT)
 LFLAGS += $(LOPT)
 
-bin/ebrew: bin/ebrew.o bin/lib.o
+bin/ebrew: bin/ebrew.o
 	$(LD) -o $@ -s $^ $(LFLAGS)
 
 bin/ebrew.o: bin/ebrew.c
@@ -27,9 +27,6 @@ bin/all.eb: ebrew/lib.eh ebrew/ebrew.eb
 
 bin/dbrew: .dummy
 	$(DC) $(DOPT) -i brew/app.d -ofbin/dbrew 
-
-bin/lib.o: lib.s
-	as -o $@ $^
 
 bin: .dummy
 	mkdir -p $@

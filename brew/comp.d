@@ -2,19 +2,82 @@ module brew.comp;
 
 import std.stdio;
 import std.conv;
-import std.algorithm;
 import brew.ast;
 
 enum ebrewPre = `
-#define EB_AND(lhs_,rhs_)({value_t a=(lhs_);a?(rhs_):a;})
-#define EB_OR(lhs_,rhs_)({value_t a=(lhs_);a?a:(rhs_);})
-typedef __SIZE_TYPE__ value_t;`;
+typedef __SIZE_TYPE__ value_t;
 
-size_t n = 0;
-string genSym()
+static value_t eb_add(value_t x, value_t y) {
+    return y + x;
+}
+
+static value_t eb_cmpa(value_t x, value_t y) {
+    return y > x;
+}
+
+static value_t eb_cmpe(value_t x, value_t y) {
+    return y == x;
+}
+
+static value_t eb_not(value_t x) {
+    return !x;
+}
+
+static value_t eb_sub(value_t x, value_t y) {
+    return y - x;
+}
+
+static value_t eb_mul(value_t x, value_t y) {
+    return y * x;
+}
+
+static value_t eb_div(value_t x, value_t y) {
+    return y / x;
+}
+
+static value_t eb_mod(value_t x, value_t y) {
+    return y % x;
+}
+
+static value_t eb_shl(value_t x, value_t y) {
+    return y << x;
+}
+
+static value_t eb_peek(value_t x) {
+    return *(unsigned char*)x;
+}
+
+static value_t eb_load(value_t x) {
+    return *(value_t*)x;
+}
+
+static value_t eb_poke(value_t x, value_t y) {
+    *(unsigned char*)x = y;
+    return y;
+}
+
+static value_t eb_store(value_t x, value_t y) {
+    *(value_t*)x = y;
+    return x;
+}
+
+static value_t eb_neg(value_t x) {
+    return -x;
+}
+
+static value_t __attribute__((naked)) eb_linux(value_t rdi, value_t rsi, value_t rdx, value_t rcx, value_t r8, value_t r9, value_t rax) {
+    __asm__(
+        "mov 8(%rsp),%rax\n"
+        "syscall\n"
+        "ret\n"
+    );
+}
+
+`;
+
+string compileFunc(Node node)
 {
-    n += 1;
-    return 't' ~ n.to!string;
+    return node.compile;
 }
 
 string compileType(Form form)
@@ -43,7 +106,7 @@ string compileType(Form form)
         foreach (arg; form.args)
         {
             ret ~= arg.compile;
-            if (ret[$ - 1] != ';')
+            if (ret[$-1] != ';')
             {
                 ret ~= ";";
             }
@@ -83,13 +146,13 @@ string compileType(Form form)
         }
         else
         {
-            foreach (index, arg; form.args[1 .. $])
+            foreach (index, arg; form.args[1..$])
             {
                 if (index != 0)
                 {
                     ret ~= ",";
                 }
-                ret ~= arg.compile;
+                ret ~= arg.compile; 
             }
         }
         ret ~= ")";
@@ -118,7 +181,7 @@ string compileType(Form form)
         ret ~= ")";
         ret ~= "{";
         ret ~= form.args[$ - 1].compile;
-        if (ret[$ - 1] != ';')
+        if (ret[$-1] != ';')
         {
             ret ~= ";";
         }
@@ -126,7 +189,7 @@ string compileType(Form form)
         return ret;
     case Form.Type.call:
         string ret;
-        ret ~= form.args[0].compile;
+        ret ~= form.args[0].compileFunc;
         ret ~= "(";
         foreach (index, arg; form.args[1 .. $])
         {
@@ -147,13 +210,12 @@ string compileType(Form form)
         ret ~= ";";
         return ret;
     case Form.Type.let:
-        assert(false);
-        // return "({value_t " ~ form.args[0].compile ~ "=" ~ form.args[1].compile ~ ";" ~ form
-        //     .args[2].compile ~ ";})";
+        return "({value_t " ~ form.args[0].compile ~ "=" ~ form.args[1].compile ~ ";" ~ form
+            .args[2].compile ~ ";})";
     case Form.Type.and:
-        return "EB_AND(" ~ form.args[0].compile ~ "," ~ form.args[1].compile ~ ")";
+        return "({value_t a=" ~ form.args[0].compile ~ ";a?" ~ form.args[1].compile ~ ":a;})";
     case Form.Type.or:
-        return "EB_OR(" ~ form.args[0].compile ~ "," ~ form.args[1].compile ~ ")";
+        return "({value_t a=" ~ form.args[0].compile ~ ";a?a:" ~ form.args[1].compile ~ ";})";
     case Form.Type.retfor:
         string name = form.args[0].compile;
         string ret;
@@ -222,22 +284,14 @@ string compileType(Number num)
 string compileType(String str)
 {
     string ret;
-    ret ~= "(value_t)";
+    ret ~= "(value_t)(void*)";
     ret ~= '"';
     foreach (chr; str.value)
     {
-        char c = cast(char) chr;
-        if (!"\\\"".canFind(c))
-        {
-            ret ~= c;
-        }
-        else
-        {
-            ret ~= "\\x";
-            ubyte n = chr.to!ubyte;
-            ret ~= to!string(n / 16, 16);
-            ret ~= to!string(n % 16, 16);
-        }
+        ret ~= "\\x";
+        ubyte n = chr.to!ubyte;
+        ret ~= to!string(n / 16, 16);
+        ret ~= to!string(n % 16, 16);
     }
     ret ~= '"';
     return ret;
