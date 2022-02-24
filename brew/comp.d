@@ -91,27 +91,6 @@ string compileType(Form form)
             ret ~= arg.compile;
         }
         return ret;
-    case Form.Type.vif:
-        string ret;
-        ret ~= "if(";
-        ret ~= form.args[0].compile;
-        ret ~= "){";
-        ret ~= form.args[1].compile;
-        ret ~= "}else{";
-        ret ~= form.args[2].compile;
-        ret ~= "}";
-        return ret;
-    case Form.Type.vblock:
-        string ret;
-        foreach (arg; form.args)
-        {
-            ret ~= arg.compile;
-            if (ret[$-1] != ';')
-            {
-                ret ~= ";";
-            }
-        }
-        return ret;
     case Form.Type.do_:
         return "({" ~ form.args[0].compile ~ ";" ~ form.args[1].compile ~ ";})";
     case Form.Type.extern_:
@@ -201,14 +180,6 @@ string compileType(Form form)
         }
         ret ~= ")";
         return ret;
-    case Form.Type.vvar:
-        string ret;
-        ret ~= "value_t ";
-        ret ~= form.args[0].compile;
-        ret ~= "=";
-        ret ~= form.args[1].compile;
-        ret ~= ";";
-        return ret;
     case Form.Type.let:
         return "({value_t " ~ form.args[0].compile ~ "=" ~ form.args[1].compile ~ ";" ~ form
             .args[2].compile ~ ";})";
@@ -216,21 +187,6 @@ string compileType(Form form)
         return "({value_t a=" ~ form.args[0].compile ~ ";a?" ~ form.args[1].compile ~ ":a;})";
     case Form.Type.or:
         return "({value_t a=" ~ form.args[0].compile ~ ";a?a:" ~ form.args[1].compile ~ ";})";
-    case Form.Type.retfor:
-        string name = form.args[0].compile;
-        string ret;
-        ret ~= "value_t ";
-        ret ~= name;
-        ret ~= "=";
-        ret ~= form.args[1].compile;
-        ret ~= ";for(;;){value_t t=";
-        ret ~= form.args[2].compile;
-        ret ~= ";if(t == 0){return ";
-        ret ~= name;
-        ret ~= ";}";
-        ret ~= name;
-        ret ~= "=t;}";
-        return ret;
     case Form.Type.for_:
         string name = form.args[0].compile;
         string ret;

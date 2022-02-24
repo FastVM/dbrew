@@ -10,4 +10,3 @@ fib (n)
         n
 
 main () fib 30
- 

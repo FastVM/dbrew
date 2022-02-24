@@ -1,9 +1,10 @@
 
 OPT ?= -Os
 
-CFLAGS += -fno-asynchronous-unwind-tables
 CFLAGS += -nostdlib
+CFLAGS += -fno-unwind-tables -fno-asynchronous-unwind-tables
 CFLAGS += -fno-exceptions
+CFLAGS += -fno-stack-protector 
 CFLAGS += -fomit-frame-pointer
 
 COPT ?= $(OPT)
