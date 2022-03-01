@@ -341,6 +341,7 @@ scope(exit) defs = oldDefs;
         {
             if (startsOpenParen)
             {
+                skipSpace;
                 if (state.done)
                 {
                     raise("expected close paren at end of file");
@@ -384,15 +385,15 @@ scope(exit) defs = oldDefs;
                 readExprMatch(type)
             ).node;
         case "let":
-            Node value = readExprMatch(Binding.none);
             Ident id = ident(readName);
+            Node value = readExprMatch(Binding.none);
             mixin(hasScope);
             defs[id.repr] = Binding(id.repr);
             Node inscope = readExprMatch(type);
             return form(Form.Type.let, id, value, inscope).node;
         case "for":
-            Node value = readExprMatch(Binding.none);
             Ident id = ident(readName);
+            Node value = readExprMatch(Binding.none);
             mixin(hasScope);
             defs[id.repr] = Binding(id.repr);
             Node inscope = readExprMatch(type);

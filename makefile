@@ -17,14 +17,17 @@ LFLAGS += $(LOPT)
 bin/ebrew: bin/ebrew.o
 	$(LD) -o $@ -s $^ $(LFLAGS)
 
-bin/ebrew.o: bin/ebrew.c
-	$(CC) -o $@ -c $^ $(CFLAGS)
+bin/ebrew.o: bin/ebrew.s
+	$(AS) -o $@ -c $^
+
+bin/ebrew.s: bin/ebrew.c
+	$(CC) -o $@ -S $^ $(CFLAGS)
 
 bin/ebrew.c: bin/dbrew bin/all.eb
 	./bin/dbrew bin/all.eb $@
 
-bin/all.eb: ebrew/lib.eh ebrew/ebrew.eb
-	cat $^ > $@
+# bin/all.eb: ebrew/ebrew.eb
+# 	cat $^ > $@
 
 bin/dbrew: .dummy
 	$(DC) $(DOPT) -i brew/app.d -ofbin/dbrew 
