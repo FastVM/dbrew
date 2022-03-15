@@ -1,36 +1,15 @@
 
 OPT ?= -Os
 
-CFLAGS += -nostdlib
-CFLAGS += -fno-unwind-tables -fno-asynchronous-unwind-tables
-CFLAGS += -fno-exceptions
-CFLAGS += -fno-stack-protector 
-CFLAGS += -fomit-frame-pointer
+CFILES := minivm/vm/vm.c minivm/vm/gc.c
 
-COPT ?= $(OPT)
-LOPT ?= $(OPT)
-DOPT ?= $(OPT)
+VMS := $(CFILES:%.c=%.o)
 
-CFLAGS += $(COPT)
-LFLAGS += $(LOPT)
+bin/dbrew: brew/app.d $(VMS)
+	$(DC) $(OPT) -i brew/app.d $(VMS) -ofbin/dbrew 
 
-bin/ebrew: bin/ebrew.o
-	$(LD) -o $@ -s $^ $(LFLAGS)
-
-bin/ebrew.o: bin/ebrew.s
-	$(AS) -o $@ -c $^
-
-bin/ebrew.s: bin/ebrew.c
-	$(CC) -o $@ -S $^ $(CFLAGS)
-
-bin/ebrew.c: bin/dbrew bin/all.eb
-	./bin/dbrew bin/all.eb $@
-
-# bin/all.eb: ebrew/ebrew.eb
-# 	cat $^ > $@
-
-bin/dbrew: .dummy
-	$(DC) $(DOPT) -i brew/app.d -ofbin/dbrew 
+$(VMS): $(@:%.o=%.c)
+	$(CC) $(OPT) -o$(@) -c $(@:%.o=%.c)
 
 bin: .dummy
 	mkdir -p $@

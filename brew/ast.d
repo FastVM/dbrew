@@ -140,7 +140,7 @@ struct Form
     {
         char[] ret;
         ret ~= "(";
-        ret ~= form;
+        ret ~= form.to!string;
         foreach (i, v; args)
         {
             ret ~= " ";

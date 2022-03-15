@@ -184,11 +184,6 @@ scope(exit) defs = oldDefs;
     Binding[] readArgArray()
     {
         skipSpace;
-        if (state.first != '(')
-        {
-            raise("toplevel: expected a function opening paren");
-        }
-        state.skip;
         Binding[] args;
         while (true)
         {
@@ -203,14 +198,16 @@ scope(exit) defs = oldDefs;
                 state.skip;
                 break;
             }
-            string name = readName;
-            skipSpace;
             if (state.first == '(')
             {
+                state.skip;
+                string name = readName; 
                 args ~= Binding(name, readArgArray);
             }
             else
             {
+                string name = readName;
+                skipSpace;
                 args ~= Binding(name);
             }
         }
@@ -442,6 +439,12 @@ scope(exit) defs = oldDefs;
 
     Node readDef()
     {
+        skipSpace;
+        if (state.first != '(')
+        {
+            raise("toplevel: expected a function opening paren");
+        }
+        state.skip;
         string fname = readName;
         if (fname.length == 0)
         {

@@ -4,20 +4,17 @@ import std.array;
 import brew.parse;
 import brew.comp;
 import brew.ast;
-import brew.fold;
+import brew.vm;
 
 void main(string[] args)
 {
-	if (args.length != 3)
+	if (args.length != 2)
 	{
 		throw new Exception("args: [input] [output]\n");
 	}
 	Parser parser = Parser();
 	parser.state = ParseState(args[1].readFile);
 	Node ast = parser.readDefs();
-	Folder folder;
-	folder.mark(ast);
-	ast = folder.foldAll(ast);
-	string res = compile(ast);
-	writeFile(args[2], cast(void[]) res);
+	Opcode[] res = compile(ast);
+	run(res);
 }
