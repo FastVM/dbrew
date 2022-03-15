@@ -102,7 +102,6 @@ struct Form
 {
     enum Type
     {
-        addr,
         or,
         and,
         do_,

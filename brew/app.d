@@ -12,9 +12,12 @@ void main(string[] args)
 	{
 		throw new Exception("args: [input] [output]\n");
 	}
-	Parser parser = Parser();
-	parser.state = ParseState(args[1].readFile);
-	Node ast = parser.readDefs();
-	Opcode[] res = compile(ast);
-	run(res);
+	string src = args[1].readFile;
+	foreach (i; 0..18000) {
+		Parser parser = Parser();
+		parser.state = ParseState(src);
+		Node ast = parser.readDefs();
+		Opcode[] res = compile(ast);
+		run(res);
+	}
 }

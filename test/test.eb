@@ -1,9 +1,27 @@
 
+(add x y) ?
+(sub x y) ?
+(mul x y) ?
+(div x y) ?
+(mod x y) ?
+
+(eq x y) ?
+(lt x y) ?
+(gt x y) ?
+
 (putchar x) ?
 
+(putln) putchar '\n
+
+(putd n)
+putchar add '0 mod 10 n
+
+(putn n)
+if gt 9 n
+    do  putn div 10 n
+        putd n
+    putd n
+
 (main)
-do  putchar '4
-do  putchar '9
-do  putchar '8
-do  putchar '4
+do  putn 1234
     putchar '\n

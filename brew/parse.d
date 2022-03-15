@@ -368,8 +368,6 @@ scope(exit) defs = oldDefs;
         }
         switch (name)
         {
-        case "addr":
-            return form(Form.Type.addr, readExprMatch(Binding.none)).node;
         case "or":
             return form(Form.Type.or, readExprMatch(type), readExprMatch(type)).node;
         case "and":

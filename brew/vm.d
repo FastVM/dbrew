@@ -40,6 +40,7 @@ enum opseti = 36;
 enum opbeqi = 37;
 enum opblti = 38;
 enum opbltei = 39;
+enum opcalldyn = 40;
 
 alias Opcode = size_t;
 
