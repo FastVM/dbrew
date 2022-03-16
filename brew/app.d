@@ -1,6 +1,8 @@
 import std.file : writeFile = write, readFile = readText;
 import std.stdio;
 import std.array;
+import std.range;
+import std.parallelism;
 import brew.parse;
 import brew.comp;
 import brew.ast;
@@ -13,11 +15,9 @@ void main(string[] args)
 		throw new Exception("args: [input] [output]\n");
 	}
 	string src = args[1].readFile;
-	foreach (i; 0..18000) {
-		Parser parser = Parser();
-		parser.state = ParseState(src);
-		Node ast = parser.readDefs();
-		Opcode[] res = compile(ast);
-		run(res);
-	}
+	Parser parser = Parser();
+	parser.state = ParseState(src);
+	Node ast = parser.readDefs();
+	Opcode[] res = compile(ast);
+	runvm(res);
 }

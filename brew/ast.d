@@ -107,12 +107,10 @@ struct Form
         do_,
         if_,
         let,
-        for_,
         call,
         extern_,
         func,
         program,
-        ret,
         tfunc,
         tvalue,
     }

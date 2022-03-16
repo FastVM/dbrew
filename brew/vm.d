@@ -52,6 +52,6 @@ struct Config {
 
 extern(C) int vm_run(Config config, size_t nops, Opcode* ops, size_t nargs, const(char)** args);
 
-bool run(Opcode[] ops) {
-    return 0 != vm_run(Config(200, 1000, 0), ops.length, ops.ptr, 0, null);
+bool runvm(Opcode[] ops) {
+    return 0 != vm_run(Config(200, 1000, 0), ops.length, ops.dup.ptr, 0, null);
 }

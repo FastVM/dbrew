@@ -386,13 +386,6 @@ scope(exit) defs = oldDefs;
             defs[id.repr] = Binding(id.repr);
             Node inscope = readExprMatch(type);
             return form(Form.Type.let, id, value, inscope).node;
-        case "for":
-            Ident id = ident(readName);
-            Node value = readExprMatch(Binding.none);
-            mixin(hasScope);
-            defs[id.repr] = Binding(id.repr);
-            Node inscope = readExprMatch(type);
-            return form(Form.Type.for_, id, value, inscope).node;
         default:
             if (type.isFunc)
             {
@@ -468,7 +461,7 @@ scope(exit) defs = oldDefs;
         }
         else
         {
-            return form(Form.Type.func, ident(fname), argNames, form(Form.Type.ret, readExprMatch(Binding.none))).node;
+            return form(Form.Type.func, ident(fname), argNames, readExprMatch(Binding.none)).node;
         }
     }
 
