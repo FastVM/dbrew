@@ -174,22 +174,6 @@ struct Emitter
                 ops[end] = ops.length;
                 return outreg;
             }
-            else if (name == "neq")
-            {
-                size_t outreg = nregs++;
-                assert(kargs.length == 2);
-                ops ~= [opbeq, kargs[0], kargs[1]];
-                size_t jfalse = ops.length++;
-                size_t jtrue = ops.length++;
-                ops[jfalse] = ops.length;
-                ops ~= [opint, outreg, 0];
-                ops ~= opjump;
-                size_t end = ops.length++;
-                ops[jtrue] = ops.length;
-                ops ~= [opint, outreg, 1];
-                ops[end] = ops.length;
-                return outreg;
-            }
             else if (name == "lt")
             {
                 size_t outreg = nregs++;

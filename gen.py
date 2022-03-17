@@ -1,9 +1,9 @@
 
-print("(add x y) ?")
 print("(sub x y) ?")
-print(f"(f0 x) x")
+print("(add x y) ?")
+print("(lt x y) ?")
 
-for i in range(1, 100000):
-    print(f"(f{i} x) sub 1 f{i-1} add 1 {i}")
+for i in range(1, 1000000):
+    print(f"(fib{i} n) if lt 2 n n let n1 sub 1 n add fib{i} n1 fib{i} sub 1 n1")
 
 print("(main) 0")

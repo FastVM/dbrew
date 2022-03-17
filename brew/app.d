@@ -8,6 +8,25 @@ import brew.parse;
 import brew.comp;
 import brew.ast;
 import brew.vm;
+import brew.fastcomp;
+
+version = fast;
+
+Opcode[] fastCompile(string src)
+{
+	FastParser parser = FastParser();
+	parser.state = FastParseState(src);
+	parser.readDefs();
+	return parser.ops;
+}
+
+Opcode[] optCompile(string src) 
+{
+	Parser parser = Parser();
+	parser.state = ParseState(src);
+	Node ast = parser.readDefs();
+	return compile(ast);
+}
 
 void main(string[] args)
 {
@@ -18,28 +37,40 @@ void main(string[] args)
 	}
 	size_t count = 1;
 	bool run = false;
+	bool opt = false;
 	while (args[0][0] == '-')
 	{
-		if (args[0] == "-r")
+		switch (args[0])
 		{
+		case "-O":
+			opt = true;
+			args = args[1 .. $];
+			break;
+		case "-r":
 			run = true;
 			args = args[1 .. $];
-		}
-		if (args[0] == "-n")
-		{
+			break;
+		case "-n":
 			args = args[1 .. $];
 			count = args[0].to!size_t;
 			args = args[1 .. $];
+			break;
+		default:
+			throw new Exception("unknown option: " ~ args[0]);
 		}
 	}
 	string src = args[0].readFile;
 	Opcode[] res;
 	foreach (index; 0 .. count)
 	{
-		Parser parser = Parser();
-		parser.state = ParseState(src);
-		Node ast = parser.readDefs();
-		res = compile(ast);
+		if (opt)
+		{
+			res = optCompile(src);
+		}
+		else
+		{
+			res = fastCompile(src);
+		}
 	}
 	if (res is null)
 	{
