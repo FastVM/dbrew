@@ -1,11 +1,7 @@
 module fastcomp;
 
-import std.ascii;
 import std.file;
-import std.stdio;
-import std.string;
-import std.conv;
-import std.stdio;
+import std.conv : to;
 
 enum opexit = 0;
 enum opreg = 1;
@@ -18,495 +14,267 @@ enum opsub = 7;
 enum opmul = 8;
 enum opdiv = 9;
 enum opmod = 10;
-enum oppow = 11;
 enum opcall = 12;
 enum opret = 13;
 enum opputchar = 14;
-enum opstring = 15;
-enum oplength = 16;
-enum opget = 17;
-enum opset = 18;
-enum opdump = 19;
-enum opread = 20;
-enum opwrite = 21;
-enum oparray = 22;
-enum opcat = 23;
 enum opbeq = 24;
 enum opblt = 25;
-enum opaddi = 26;
-enum opsubi = 27;
-enum opmuli = 28;
-enum opdivi = 29;
-enum opmodi = 30;
-enum opcall0 = 31;
-enum opcall1 = 32;
-enum opcall2 = 33;
-enum opcall3 = 34;
-enum opgeti = 35;
-enum opseti = 36;
-enum opbeqi = 37;
-enum opblti = 38;
-enum opbltei = 39;
 enum opcalldyn = 40;
 
-alias Opcode = int;
+private enum int[string] binops = [
+        "add": opadd,
+        "sub": opsub,
+        "mul": opmul,
+        "div": opdiv,
+        "mod": opmod,
+    ];
 
-private enum Opcode[string] binops = [
-    "add": opadd,
-    "sub": opsub,
-    "mul": opmul,
-    "div": opdiv,
-    "mod": opmod,
-    "pow": oppow,
-];
+private enum int[string] cmpops = [
+        "lt": opblt,
+        "eq": opbeq,
+    ];
 
-private enum Opcode[string] cmpops = [
-    "lt": opblt,
-    "eq": opbeq,
-];
-
-struct Binding
-{
+struct Binding {
     string name;
     bool isFunc;
     Binding[] args;
+}
 
-    static Binding none()
-    {
-        return Binding(null);
-    }
+string src;
+int nregs;
+int[string] funcs;
+int[string] locals;
+int[] ops;
+Binding[string] defs;
 
-    this(string name)
-    {
-        this.name = name;
-        this.isFunc = false;
-    }
-
-    this(string name, Binding[] args)
-    {
-        this.name = name;
-        this.isFunc = true;
-        this.args = args;
-    }
-
-    void toString(void delegate(string) sink)
-    {
-        sink(name);
-        foreach (arg; args)
-        {
-            sink(" ");
-            arg.toString(sink);
+void skipSpace() {
+    while (src.length != 0) {
+        if (src[0] == ' ' || src[0] == '\t' || src[0] == '\n' || src[0] == '\r') {
+            src = src[1 .. $];
+            continue;
         }
+        if (src[0] == '#') {
+            src = src[1 .. $];
+            while (src[0] != '#') {
+                src = src[1 .. $];
+            }
+            src = src[1 .. $];
+            continue;
+        }
+        break;
     }
 }
 
-struct Parser
-{
-    string src;
-    Opcode nregs;
-    Opcode[string] funcs;
-    Opcode[string] locals;
-
-    Opcode offset;
-    Opcode[] ops;
-
-    Binding[string] defs;
-
-    void skip()
-    {
+string readName() {
+    skipSpace;
+    string ret;
+    while (!src.length == 0 && src[0] != ' ' && src[0] != '\t' && src[0] != '\n' && src[0] != '\r' && src[0] != '(' && src[0] != ')') {
+        ret ~= src[0];
         src = src[1 .. $];
     }
+    return ret;
+}
 
-    bool done()
-    {
-        return src.length == 0;
-    }
-
-    char first()
-    {
-        assert(!done);
-        return src[0];
-    }
-
-    char read()
-    {
-        char ret = first;
-        skip;
-        return ret;
-    }
-
-    void skipSpace()
-    {
-        while (true)
-        {
-            if (done)
-            {
-                break;
-            }
-            if (first.isWhite)
-            {
-                skip;
-                continue;
-            }
-            if (first == '#')
-            {
-                skip;
-                assert(!done, "unclosed comment");
-                while (first != '#')
-                {
-                    skip;
-                    assert(!done, "unclosed comment");
-                }
-                skip;
-                continue;
-            }
+Binding[] readArgArray() {
+    Binding[] args;
+    while (true) {
+        skipSpace;
+        if (src[0] == ')') {
+            src = src[1 .. $];
             break;
         }
-    }
-
-    string readName()
-    {
-        skipSpace;
-        string ret;
-        while (!done)
-        {
-            char first = first;
-            if (!first.isAlphaNum && first != '-' && first != '_')
-            {
-                break;
-            }
-            ret ~= read;
-        }
-        return ret;
-    }
-
-    Binding[] readArgArray()
-    {
-        skipSpace;
-        Binding[] args;
-        while (true)
-        {
+        if (src[0] == '(') {
+            src = src[1 .. $];
+            args ~= Binding(readName, true, readArgArray);
+        } else {
+            args ~= Binding(readName, false);
             skipSpace;
-            assert(!done, "toplevel: file ended when reading function definition arguments");
-            if (first == ')')
-            {
-                skip;
-                break;
-            }
-            if (first == '(')
-            {
-                skip;
-                string name = readName; 
-                args ~= Binding(name, readArgArray);
-            }
-            else
-            {
-                string name = readName;
-                skipSpace;
-                args ~= Binding(name);
+        }
+    }
+    return args;
+}
+
+int readExprMatch(Binding type) {
+    skipSpace;
+    if (src[0] == '\'') {
+        char chr = src[1];
+        src = src[2 .. $];
+        if (chr == '\\') {
+            chr = src[0];
+            src = src[1 .. $];
+            if (chr == 't') {
+                chr = '\t';
+            } else if (chr == 'n') {
+                chr = '\n';
+            } else if (chr == 'r') {
+                chr = '\r';
             }
         }
-        return args;
+        if (src.length != 0 && src[0] == '\'') {
+            src = src[1 .. $];
+        }
+        int outreg = nregs++;
+        ops ~= [opint, outreg, cast(int) chr];
+        return outreg;
     }
-
-    Opcode emitIdent(string name)
-    {
-        if (Opcode* ptr = name in locals)
-        {
+    bool startsOpenParen = src[0] == '(';
+    while (startsOpenParen) {
+        src = src[1 .. $];
+        skipSpace;
+    }
+    string name = readName;
+    scope (exit) {
+        if (startsOpenParen) {
+            skipSpace;
+            src = src[1 .. $];
+        }
+    }
+    if (startsOpenParen) {
+        skipSpace;
+        if (src.length != 0 && src[0] == ')') {
+            type.isFunc = true;
+        }
+    }
+    if (name == "or") {
+        int lhs = readExprMatch(Binding.init);
+        int outreg = nregs++;
+        ops ~= [opbb, lhs];
+        int jzero = cast(int) ops.length++;
+        int jnonzero = cast(int) ops.length++;
+        ops[jnonzero] = cast(int) ops.length;
+        ops ~= [opreg, outreg, lhs];
+        ops ~= opjump;
+        int jout = cast(int) ops.length++;
+        ops[jzero] = cast(int) ops.length;
+        int rhs = readExprMatch(Binding.init);
+        ops ~= [opreg, outreg, rhs];
+        ops[jout] = cast(int) ops.length;
+        return outreg;
+    } else if (name == "and") {
+        int lhs = readExprMatch(Binding.init);
+        int outreg = nregs++;
+        ops ~= [opbb, lhs];
+        int jzero = cast(int) ops.length++;
+        int jnonzero = cast(int) ops.length++;
+        ops[jzero] = cast(int) ops.length;
+        ops ~= [opint, outreg, 0];
+        ops ~= opjump;
+        int jout = cast(int) ops.length++;
+        ops[jnonzero] = cast(int) ops.length;
+        int rhs = readExprMatch(Binding.init);
+        ops ~= [opreg, outreg, rhs];
+        ops[jout] = cast(int) ops.length;
+        return outreg;
+    } else if (name == "do") {
+        readExprMatch(Binding.init);
+        return readExprMatch(type);
+    } else if (name == "if") {
+        int branch = readExprMatch(Binding.init);
+        ops ~= [opbb, branch];
+        int jfalse = cast(int) ops.length++;
+        int jtrue = cast(int) ops.length++;
+        int outreg = nregs++;
+        ops[jtrue] = cast(int) ops.length;
+        int vtrue = readExprMatch(Binding.init);
+        ops ~= [opreg, outreg, vtrue];
+        ops ~= opjump;
+        int jend = cast(int) ops.length++;
+        ops[jfalse] = cast(int) ops.length;
+        int vfalse = readExprMatch(Binding.init);
+        ops ~= [opreg, outreg, vfalse];
+        ops[jend] = cast(int) ops.length;
+        return outreg;
+    } else if (name == "let") {
+        string let = readName;
+        int where = readExprMatch(Binding.init);
+        defs[let] = Binding.init;
+        locals[let] = where;
+        return readExprMatch(type);
+    } else if ('0' <= name[0] && name[0] <= '9') {
+        int outreg = nregs++;
+        ops ~= [opint, outreg, name.to!int];
+        return outreg;
+    } else if (type.isFunc) {
+        if (int* ptr = name in locals) {
             return *ptr;
         }
-        else
-        {
-            Opcode outreg = nregs++;
-            ops ~= [opint, outreg, funcs[name]];
-            return outreg;
-        }
-    }
-
-
-    Opcode opLength()
-    {
-        return offset + cast(Opcode) ops.length;
-    }
-
-    Opcode readExprMatch(Binding type)
-    {
-        skipSpace;
-        assert(!done, "expected expression at end of file");
-        if (first == '\'')
-        {
-            skip;
-            assert(!done, "expected char literal at end of file");
-            char chr = read;
-            if (chr == '\\')
-            {
-                assert(!done, "expected escape sequence");
-                chr = read;
-                switch (chr)
-                {
-                default:
-                    break;
-                case 't':
-                    chr = '\t';
-                    break;
-                case 'n':
-                    chr = '\n';
-                    break;
-                case 'r':
-                    chr = '\r';
-                    break;
-                }
-            }
-            if (!done && first == '\'')
-            {
-                skip;
-            }
-            Opcode outreg = nregs++;
-            ops ~= [opint, outreg, cast(Opcode) chr];
-            return outreg;
-        }
-        bool startsOpenParen = false;
-        while (first == '(')
-        {
-            startsOpenParen = true;
-            skip;
-            skipSpace;
-            assert(!done, "expected expression after paren at end of file");
-        }
-        string name = readName;
-        scope (exit)
-        {
-            if (startsOpenParen)
-            {
-                skipSpace;
-                assert(!done && first == ')', "expected close paren at end of expression");
-                skip;
-                skipSpace;
-            }
-        }
-        if (startsOpenParen)
-        {
-            skipSpace;
-            if (!done && first == ')')
-            {
-                type.isFunc = true;
-            }
-        }
-        assert(name.length != 0, "epxression expected");
-        switch (name)
-        {
-        case "or":
-            Opcode lhs = readExprMatch(Binding.none);
-            Opcode outreg = nregs++;
-            ops ~= [opbeqi, lhs, 0];
-            Opcode jzero = cast(Opcode) ops.length++;
-            Opcode jnonzero = cast(Opcode) ops.length++;
-            ops[jnonzero] = opLength;
-            ops ~= [opreg, outreg, lhs];
-            ops ~= opjump;
-            Opcode jout = cast(Opcode) ops.length++;
-            ops[jzero] = opLength;
-            Opcode rhs = readExprMatch(Binding.none);
-            ops ~= [opreg, outreg, rhs];
-            ops[jout] = opLength;
-            return outreg;
-        case "and":
-            Opcode lhs = readExprMatch(Binding.none);
-            Opcode outreg = nregs++;
-            ops ~= [opbeqi, lhs, 0];
-            Opcode jzero = cast(Opcode) ops.length++;
-            Opcode jnonzero = cast(Opcode) ops.length++;
-            ops[jzero] = opLength;
-            ops ~= [opint, outreg, 0];
-            ops ~= opjump;
-            Opcode jout = cast(Opcode) ops.length++;
-            ops[jnonzero] = opLength;
-            Opcode rhs = readExprMatch(Binding.none);
-            ops ~= [opreg, outreg, rhs];
-            ops[jout] = opLength;
-            return outreg;
-        case "do":
-            readExprMatch(Binding.none);
-            return readExprMatch(type);
-        case "if":
-            Opcode branch = readExprMatch(Binding.none);
-            ops ~= [opbb, branch];
-            Opcode jfalse = cast(Opcode) ops.length++;
-            Opcode jtrue = cast(Opcode) ops.length++;
-            Opcode outreg = nregs++;
-            ops[jtrue] = opLength;
-            Opcode vtrue = readExprMatch(Binding.none);
-            ops ~= [opreg, outreg, vtrue];
-            ops ~= opjump;
-            Opcode jend = cast(Opcode) ops.length++;
-            ops[jfalse] = opLength;
-            Opcode vfalse = readExprMatch(Binding.none);
-            ops ~= [opreg, outreg, vfalse];
-            ops[jend] = opLength;
-            return outreg;
-        case "let":
-            string let = readName;
-            Opcode where = readExprMatch(Binding.none);
-            defs[let] = Binding.none;
-            locals[let] = where;
-            Opcode ret = readExprMatch(type);
-            defs.remove(let);
-            locals.remove(let);
-            return ret;
-        default:
-            if ('0' <= name[0] && name[0] <= '9')
-            {
-                Opcode outreg = nregs++;
-                ops ~= [opint, outreg, name.to!Opcode];
-                return outreg;
-            }
-            else if (type.isFunc)
-            {
-                return emitIdent(name);
-            }
-            else
-            {
-                return readCall(name);
-            }
-        }
-    }
-
-    Opcode readCall(string name)
-    {
-        Binding argTypes = defs[name];
-        if (argTypes.isFunc)
-        {
-            Opcode[] argValues;
-            foreach (argType; argTypes.args)
-            {
-                argValues ~= readExprMatch(argType);
-            }
-            Opcode outreg = nregs++;
-            if (Opcode* ptr = name in locals)
-            {
-                ops ~= [opcalldyn, outreg, *ptr, cast(Opcode) argValues.length];
-                ops ~= argValues;
-            }
-            else if (Opcode* ptr = name in funcs)
-            {
-                ops ~= [opcall, outreg, *ptr, cast(Opcode) argValues.length];
-                ops ~= argValues;
-            }
-            else if (Opcode* opptr = name in binops)
-            {
-                ops ~= [*opptr, outreg, argValues[1], argValues[0]];
-            }
-            else if (Opcode* opcmp = name in cmpops)
-            {
-                ops ~= [*opcmp, argValues[1], argValues[0]];
-                Opcode jfalse = cast(Opcode) ops.length++;
-                Opcode jtrue = cast(Opcode) ops.length++;
-                ops[jfalse] = opLength;
-                ops ~= [opint, outreg, 0];
-                ops ~= opjump;
-                Opcode end = cast(Opcode) ops.length++;
-                ops[jtrue] = opLength;
-                ops ~= [opint, outreg, 1];
-                ops[end] = opLength;
-            }
-            else
-            {
-                if (name == "putchar")
-                {
-                    ops ~= opputchar;
-                    ops ~= argValues[0];
-                    return argValues[0];
-                }
-                else if (name == "lt")
-                {
-                }
-                else if (name == "eq")
-                {
-                    ops ~= [opbeq, argValues[1], argValues[0]];
-                    Opcode jfalse = cast(Opcode) ops.length++;
-                    Opcode jtrue = cast(Opcode) ops.length++;
-                    ops[jfalse] = opLength;
-                    ops ~= [opint, outreg, 0];
-                    ops ~= opjump;
-                    Opcode end = cast(Opcode) ops.length++;
-                    ops[jtrue] = opLength;
-                    ops ~= [opint, outreg, 1];
-                    ops[end] = opLength;
-                }
-            }
-            return outreg;
-        }
-        else
-        {
-            return emitIdent(name);
-        }
-    }
-
-    void readDef()
-    {
-        assert (first == '(');
-        skip;
-        string fname = readName;
-        assert(fname.length != 0);
-        Binding[] vals = readArgArray;
-        defs[fname] = Binding(fname, vals);
-        foreach (val; vals)
-        {
-            defs[val.name] = val;
-        }
-        skipSpace;
-        if (first == '?')
-        {
-            skip;
-        }
-        else
-        {
-            ops ~= opfunc;
-            Opcode jover = cast(Opcode) ops.length++;
-            ops ~= cast(Opcode) vals.length;
-            ops ~= cast(Opcode) fname.length;
-            foreach (chr; fname)
-            {
-                ops ~= cast(Opcode) chr;
-            }
-            Opcode nregswhere = cast(Opcode) ops.length++;
-            funcs[fname] = opLength;
-            nregs = 1;
-            locals = null;
-            foreach (arg; vals) 
-            {
-                locals[arg.name] = nregs;
-                nregs += 1;
-            }
-            Opcode rr = readExprMatch(Binding.none);
-            ops ~= [opret, rr];
-            ops[nregswhere] = nregs;
-            ops[jover] = opLength;
-        }
-    }
-
-    void readDefs(File outfile)
-    {
-        skipSpace;
-        while (!done)
-        {
-            readDef;
-            if (ops.length > 1_000_000)
-            {
-                outfile.rawWrite(ops);
-                offset += cast(Opcode) ops.length;
-                ops = null;
-            }
-            skipSpace;
-        }
-        ops ~= [opcall, 0, funcs["main"], 0, opexit];
-        outfile.rawWrite(ops);
+        int outreg = nregs++;
+        ops ~= [opint, outreg, funcs[name]];
+        return outreg;
+    } else {
+        return readCall(name);
     }
 }
 
-void main(string[] args)
-{
-    Parser parser = Parser(args[1].readText);
-    File outfile = File("out.bc", "wb");
-    parser.readDefs(outfile);
+int readCall(string name) {
+    if (defs[name].isFunc) {
+        int[] argValues;
+        foreach (argType; defs[name].args) {
+            argValues ~= readExprMatch(argType);
+        }
+        int outreg = nregs++;
+        if (int* ptr = name in locals) {
+            ops ~= [opcalldyn, outreg, *ptr, cast(int) argValues.length] ~ argValues;
+        } else if (int* ptr = name in funcs) {
+            ops ~= [opcall, outreg, *ptr, cast(int) argValues.length] ~ argValues;
+        } else if (int* opptr = name in binops) {
+            ops ~= [*opptr, outreg, argValues[1], argValues[0]];
+        } else if (int* opcmp = name in cmpops) {
+            ops ~= [*opcmp, argValues[1], argValues[0]];
+            int jfalse = cast(int) ops.length++;
+            int jtrue = cast(int) ops.length++;
+            ops[jfalse] = cast(int) ops.length;
+            ops ~= [opint, outreg, 0, opjump];
+            int end = cast(int) ops.length++;
+            ops[jtrue] = cast(int) ops.length;
+            ops ~= [opint, outreg, 1];
+            ops[end] = cast(int) ops.length;
+        } else if (name == "putchar") {
+            ops ~= [opputchar, argValues[0]];
+        }
+        return outreg;
+    } else {
+        return locals[name];
+    }
+}
+
+void readDef() {
+    src = src[1 .. $];
+    string fname = readName;
+    Binding[] vals = readArgArray;
+    defs[fname] = Binding(fname, true, vals);
+    foreach (val; vals) {
+        defs[val.name] = val;
+    }
+    skipSpace;
+    if (src[0] == '?') {
+        src = src[1 .. $];
+    } else {
+        ops ~= opfunc;
+        int jover = cast(int) ops.length++;
+        ops ~= cast(int) vals.length;
+        ops ~= 0;
+        int nregswhere = cast(int) ops.length++;
+        funcs[fname] = cast(int) ops.length;
+        nregs = 1;
+        locals = null;
+        foreach (arg; vals) {
+            locals[arg.name] = nregs;
+            nregs += 1;
+        }
+        int rr = readExprMatch(Binding.init);
+        ops ~= [opret, rr];
+        ops[nregswhere] = nregs;
+        ops[jover] = cast(int) ops.length;
+    }
+}
+
+void main(string[] args) {
+    src = args[1].readText;
+    skipSpace;
+    while (src.length != 0) {
+        readDef;
+        skipSpace;
+    }
+    "out.bc".write(ops ~ [opcall, 0, funcs["main"], 0, opexit]);
 }

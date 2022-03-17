@@ -14,20 +14,16 @@ enum size_t[2][string] binops = [
         "mod": [opmod, opmodi],
     ];
 
-struct Emitter
-{
+struct Emitter {
     size_t nregs;
     size_t[string] funcs;
     size_t[string] locals;
     Opcode[] ops;
 
-    size_t compileType(Form form)
-    {
-        final switch (form.form)
-        {
+    size_t compileType(Form form) {
+        final switch (form.form) {
         case Form.Type.program:
-            foreach (arg; form.args)
-            {
+            foreach (arg; form.args) {
                 compile(arg);
             }
             size_t outreg = nregs++;
@@ -36,8 +32,7 @@ struct Emitter
             return 0;
         case Form.Type.do_:
             size_t last = 0;
-            foreach (arg; form.args)
-            {
+            foreach (arg; form.args) {
                 last = compile(arg);
             }
             return last;
@@ -49,16 +44,14 @@ struct Emitter
             size_t jover = ops.length++;
             ops ~= form.args.length - 2;
             ops ~= name.length;
-            foreach (chr; name)
-            {
+            foreach (chr; name) {
                 ops ~= chr;
             }
             size_t nregswhere = ops.length++;
             funcs[name] = ops.length;
             nregs = 1;
             locals = null;
-            foreach (arg; form.args[1 .. $ - 1])
-            {
+            foreach (arg; form.args[1 .. $ - 1]) {
                 locals[arg.value.ident.repr] = nregs;
                 nregs += 1;
             }
@@ -69,11 +62,9 @@ struct Emitter
             return 0;
         case Form.Type.call:
             string name = form.args[0].value.ident.repr;
-            if (size_t[2]* ptr = name in binops)
-            {
+            if (size_t[2]* ptr = name in binops) {
                 size_t[2] op = *ptr;
-                if (form.args[1].type == Node.Type.num)
-                {
+                if (form.args[1].type == Node.Type.num) {
                     size_t lhs = form.args[1].value.num.value;
                     size_t rhs = compile(form.args[2]);
                     size_t outreg = nregs++;
@@ -82,9 +73,7 @@ struct Emitter
                     ops ~= rhs;
                     ops ~= lhs;
                     return outreg;
-                }
-                else
-                {
+                } else {
                     size_t lhs = compile(form.args[1]);
                     size_t rhs = compile(form.args[2]);
                     size_t outreg = nregs++;
@@ -96,19 +85,15 @@ struct Emitter
                 }
             }
             size_t[] kargs;
-            foreach (arg; form.args[1 .. $])
-            {
+            foreach (arg; form.args[1 .. $]) {
                 kargs ~= compile(arg);
             }
-            if (size_t* ptr = name in locals)
-            {
+            if (size_t* ptr = name in locals) {
                 size_t outreg = nregs++;
                 ops ~= [opcalldyn, outreg, *ptr, kargs.length];
                 ops ~= kargs;
                 return outreg;
-            }
-            else if (size_t* ptr = name in funcs)
-            {
+            } else if (size_t* ptr = name in funcs) {
                 size_t outreg = nregs++;
                 switch (kargs.length) {
                 case 0:
@@ -121,7 +106,9 @@ struct Emitter
                     ops ~= [opcall2, outreg, *ptr, kargs[0], kargs[1]];
                     break;
                 case 3:
-                    ops ~= [opcall3, outreg, *ptr, kargs[0], kargs[1], kargs[2]];
+                    ops ~= [
+                        opcall3, outreg, *ptr, kargs[0], kargs[1], kargs[2]
+                    ];
                     break;
                 default:
                     ops ~= [opcall, outreg, *ptr, kargs.length];
@@ -129,37 +116,27 @@ struct Emitter
                     break;
                 }
                 return outreg;
-            }
-            else if (name == "putchar")
-            {
+            } else if (name == "putchar") {
                 ops ~= [opputchar];
                 ops ~= kargs;
                 return kargs[0];
-            }
-            else if (name == "cons")
-            {
+            } else if (name == "cons") {
                 size_t lhs = compile(form.args[0]);
                 size_t rhs = compile(form.args[1]);
                 size_t outreg = nregs++;
                 ops ~= [oparray, outreg, 2, lhs, rhs];
                 return outreg;
-            }
-            else if (name == "car")
-            {
+            } else if (name == "car") {
                 size_t pair = compile(form.args[0]);
                 size_t outreg = nregs++;
                 ops ~= [opgeti, outreg, pair, 0];
                 return outreg;
-            }
-            else if (name == "cdr")
-            {
+            } else if (name == "cdr") {
                 size_t pair = compile(form.args[0]);
                 size_t outreg = nregs++;
                 ops ~= [opgeti, outreg, pair, 1];
                 return outreg;
-            }
-            else if (name == "eq")
-            {
+            } else if (name == "eq") {
                 size_t outreg = nregs++;
                 assert(kargs.length == 2);
                 ops ~= [opbeq, kargs[1], kargs[0]];
@@ -173,9 +150,7 @@ struct Emitter
                 ops ~= [opint, outreg, 1];
                 ops[end] = ops.length;
                 return outreg;
-            }
-            else if (name == "lt")
-            {
+            } else if (name == "lt") {
                 size_t outreg = nregs++;
                 assert(kargs.length == 2);
                 ops ~= [opblt, kargs[1], kargs[0]];
@@ -229,29 +204,22 @@ struct Emitter
             size_t jtrue;
             size_t jfalse;
             if (form.args[0].type == Node.Type.form && form.args[0].value.form.form == Form
-                .Type.call)
-            {
+                .Type.call) {
                 string name = form.args[0].value.form.args[0].value.ident.repr;
                 Node[] args = form.args[0].value.form.args[1 .. $];
-                switch (name)
-                {
+                switch (name) {
                 case "eq":
-                    if (args[0].type == Node.Type.num)
-                    {
+                    if (args[0].type == Node.Type.num) {
                         size_t rhs = compile(args[1]);
                         ops ~= [opbeqi, rhs, args[0].value.num.value];
                         jfalse = ops.length++;
                         jtrue = ops.length++;
-                    }
-                    else if (args[1].type == Node.Type.num)
-                    {
+                    } else if (args[1].type == Node.Type.num) {
                         size_t lhs = compile(args[0]);
                         ops ~= [opbeqi, lhs, args[1].value.num.value];
                         jfalse = ops.length++;
                         jtrue = ops.length++;
-                    }
-                    else
-                    {
+                    } else {
                         size_t lhs = compile(args[0]);
                         size_t rhs = compile(args[1]);
                         ops ~= [opbeq, rhs, lhs];
@@ -260,15 +228,12 @@ struct Emitter
                     }
                     break;
                 case "lt":
-                    if (args[0].type == Node.Type.num)
-                    {
+                    if (args[0].type == Node.Type.num) {
                         size_t rhs = compile(args[1]);
                         ops ~= [opblti, rhs, args[0].value.num.value];
                         jfalse = ops.length++;
                         jtrue = ops.length++;
-                    }
-                    else
-                    {
+                    } else {
                         size_t lhs = compile(args[0]);
                         size_t rhs = compile(args[1]);
                         ops ~= [opblt, rhs, lhs];
@@ -300,40 +265,30 @@ struct Emitter
         assert(false, form.form.to!string);
     }
 
-    size_t compileType(Ident id)
-    {
-        if (size_t* ptr = id.repr in locals)
-        {
+    size_t compileType(Ident id) {
+        if (size_t* ptr = id.repr in locals) {
             return *ptr;
-        }
-        else if (size_t* ptr = id.repr in funcs)
-        {
+        } else if (size_t* ptr = id.repr in funcs) {
             size_t outreg = nregs++;
             ops ~= [opint, outreg, *ptr];
             return outreg;
-        }
-        else
-        {
+        } else {
             assert(false);
         }
     }
 
-    size_t compileType(Number num)
-    {
+    size_t compileType(Number num) {
         size_t outreg = nregs++;
         ops ~= [opint, outreg, num.value];
         return outreg;
     }
 
-    size_t compileType(String str)
-    {
+    size_t compileType(String str) {
         assert(false);
     }
 
-    size_t compile(Node node)
-    {
-        final switch (node.type)
-        {
+    size_t compile(Node node) {
+        final switch (node.type) {
         case Node.Type.form:
             return compileType(node.value.form);
         case Node.Type.ident:
@@ -346,8 +301,7 @@ struct Emitter
     }
 }
 
-Opcode[] compile(Node node)
-{
+Opcode[] compile(Node node) {
     Emitter emit;
     emit.compile(node);
     return emit.ops;

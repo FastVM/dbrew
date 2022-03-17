@@ -4,44 +4,36 @@ import std.algorithm;
 import std.conv;
 import std.meta;
 
-Form form(Args...)(Args args)
-{
+Form form(Args...)(Args args) {
     return Form(args);
 }
 
-Ident ident(string name)
-{
+Ident ident(string name) {
     return Ident(name);
 }
 
-Number num(size_t num)
-{
+Number num(size_t num) {
     return Number(num);
 }
 
-String str(string str)
-{
+String str(string str) {
     return String(str);
 }
 
-Node node(Type)(Type arg)
-{
+Node node(Type)(Type arg) {
     return Node(arg);
 }
 
 /// any node, not valid in the ast
-struct Node
-{
-    enum Type
-    {
+struct Node {
+    enum Type {
         form,
         ident,
         num,
         str,
     }
 
-    union Value
-    {
+    union Value {
         Form form;
         Ident ident;
         Number num;
@@ -51,40 +43,33 @@ struct Node
     Value value;
     Type type;
 
-    this(Node other)
-    {
+    this(Node other) {
         value = other.value;
         type = other.type;
     }
 
-    this(Form form)
-    {
+    this(Form form) {
         value.form = form;
         type = Type.form;
     }
 
-    this(Ident ident)
-    {
+    this(Ident ident) {
         value.ident = ident;
         type = Type.ident;
     }
 
-    this(Number num)
-    {
+    this(Number num) {
         value.num = num;
         type = Type.num;
     }
 
-    this(String str)
-    {
+    this(String str) {
         value.str = str;
         type = Type.str;
     }
 
-    string toString()
-    {
-        final switch (type)
-        {
+    string toString() {
+        final switch (type) {
         case Type.form:
             return value.form.to!string;
         case Type.ident:
@@ -98,10 +83,8 @@ struct Node
 }
 
 /// call of function or operator call
-struct Form
-{
-    enum Type
-    {
+struct Form {
+    enum Type {
         or,
         and,
         do_,
@@ -116,19 +99,16 @@ struct Form
     Type form;
     Node[] args;
 
-    this(Type f, Node[] a)
-    {
+    this(Type f, Node[] a) {
         form = f;
         args = a;
     }
 
-    string toString()
-    {
+    string toString() {
         char[] ret;
         ret ~= "(";
         ret ~= form.to!string;
-        foreach (i, v; args)
-        {
+        foreach (i, v; args) {
             ret ~= " ";
             ret ~= v.to!string;
         }
@@ -138,49 +118,40 @@ struct Form
 }
 
 /// ident or number, detects at runtime
-struct Ident
-{
+struct Ident {
     string repr;
 
-    this(string s)
-    {
+    this(string s) {
         repr = s;
     }
 
-    string toString()
-    {
+    string toString() {
         return repr;
     }
 }
 
 /// number value literal
-struct Number
-{
+struct Number {
     size_t value;
 
-    this(T)(T v)
-    {
+    this(T)(T v) {
         value = v;
     }
 
-    string toString()
-    {
+    string toString() {
         return "[" ~ value.to!string ~ "]";
     }
 }
 
 /// string value literal
-struct String
-{
+struct String {
     string value;
 
-    this(T)(T v)
-    {
+    this(T)(T v) {
         value = v;
     }
 
-    string toString()
-    {
+    string toString() {
         return "[" ~ value.to!string ~ "]";
     }
 }
