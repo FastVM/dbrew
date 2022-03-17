@@ -96,23 +96,6 @@ struct Binding
             arg.toString(sink);
         }
     }
-
-    Node toType()
-    {
-        if (isFunc)
-        {
-            Node[] aargs = [ident(name).node];
-            foreach (arg; args)
-            {
-                aargs ~= arg.toType;
-            }
-            return form(Form.Type.tfunc, aargs).node;
-        }
-        else
-        {
-            return form(Form.Type.tvalue, [ident(name).node]).node;
-        }
-    }
 }
 
 struct Parser
@@ -444,7 +427,7 @@ struct Parser
         Node[] argNames = [ident(fname).node];
         foreach (val; vals)
         {
-            argNames ~= val.toType;
+            argNames ~= ident(val.name).node;
         }
         skipSpace;
         if (state.first == '?')

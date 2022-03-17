@@ -111,8 +111,6 @@ struct Form
         extern_,
         func,
         program,
-        tfunc,
-        tvalue,
     }
 
     Type form;

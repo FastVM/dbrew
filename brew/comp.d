@@ -43,10 +43,6 @@ struct Emitter
             return last;
         case Form.Type.extern_:
             return 0;
-        case Form.Type.tvalue:
-            return 0;
-        case Form.Type.tfunc:
-            return 0;
         case Form.Type.func:
             string name = form.args[0].value.ident.repr;
             ops ~= opfunc;
@@ -63,7 +59,7 @@ struct Emitter
             locals = null;
             foreach (arg; form.args[1 .. $ - 1])
             {
-                locals[arg.value.form.args[0].value.ident.repr] = nregs;
+                locals[arg.value.ident.repr] = nregs;
                 nregs += 1;
             }
             size_t rr = compile(form.args[$ - 1]);
