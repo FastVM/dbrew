@@ -1,10 +1,55 @@
-module brew.fastcomp;
+module fastcomp;
 
 import std.ascii;
+import std.file;
+import std.stdio;
 import std.string;
 import std.conv;
 import std.stdio;
-import brew.vm;
+
+enum opexit = 0;
+enum opreg = 1;
+enum opbb = 2;
+enum opint = 3;
+enum opjump = 4;
+enum opfunc = 5;
+enum opadd = 6;
+enum opsub = 7;
+enum opmul = 8;
+enum opdiv = 9;
+enum opmod = 10;
+enum oppow = 11;
+enum opcall = 12;
+enum opret = 13;
+enum opputchar = 14;
+enum opstring = 15;
+enum oplength = 16;
+enum opget = 17;
+enum opset = 18;
+enum opdump = 19;
+enum opread = 20;
+enum opwrite = 21;
+enum oparray = 22;
+enum opcat = 23;
+enum opbeq = 24;
+enum opblt = 25;
+enum opaddi = 26;
+enum opsubi = 27;
+enum opmuli = 28;
+enum opdivi = 29;
+enum opmodi = 30;
+enum opcall0 = 31;
+enum opcall1 = 32;
+enum opcall2 = 33;
+enum opcall3 = 34;
+enum opgeti = 35;
+enum opseti = 36;
+enum opbeqi = 37;
+enum opblti = 38;
+enum opbltei = 39;
+enum opcalldyn = 40;
+
+alias Opcode = int;
 
 private enum Opcode[string] binops = [
     "add": opadd,
@@ -19,52 +64,6 @@ private enum Opcode[string] cmpops = [
     "lt": opblt,
     "eq": opbeq,
 ];
-
-struct FastParseState
-{
-    string src;
-    size_t line;
-    size_t col;
-
-    this(string str)
-    {
-        src = str;
-        line = 1;
-        col = 1;
-    }
-
-    void skip()
-    {
-        if (src[0] == '\n')
-        {
-            line += 1;
-            col = 1;
-        }
-        else
-        {
-            col += 1;
-        }
-        src = src[1 .. $];
-    }
-
-    bool done()
-    {
-        return src.length == 0;
-    }
-
-    char first()
-    {
-        assert(!done);
-        return src[0];
-    }
-
-    char read()
-    {
-        char ret = first;
-        skip;
-        return ret;
-    }
-}
 
 struct Binding
 {
@@ -101,40 +100,64 @@ struct Binding
     }
 }
 
-struct FastParser
+struct Parser
 {
-    size_t nregs;
-    size_t[string] funcs;
-    size_t[string] locals;
+    string src;
+    Opcode nregs;
+    Opcode[string] funcs;
+    Opcode[string] locals;
 
+    Opcode offset;
     Opcode[] ops;
 
     Binding[string] defs;
-    FastParseState state;
+
+    void skip()
+    {
+        src = src[1 .. $];
+    }
+
+    bool done()
+    {
+        return src.length == 0;
+    }
+
+    char first()
+    {
+        assert(!done);
+        return src[0];
+    }
+
+    char read()
+    {
+        char ret = first;
+        skip;
+        return ret;
+    }
 
     void skipSpace()
     {
         while (true)
         {
-            if (state.done)
+            if (done)
             {
                 break;
             }
-            if (state.first.isWhite)
+            if (first.isWhite)
             {
-                state.skip;
+                skip;
                 continue;
             }
-            if (state.first == '#')
+            if (first == '#')
             {
-                state.skip;
-                assert(!state.done, "unclosed comment");
-                while (state.first != '#')
+                skip;
+                assert(!done, "unclosed comment");
+                while (first != '#')
                 {
-                    state.skip;
-                    assert(!state.done, "unclosed comment");
+                    skip;
+                    assert(!done, "unclosed comment");
                 }
-                state.skip;
+                skip;
                 continue;
             }
             break;
@@ -145,14 +168,14 @@ struct FastParser
     {
         skipSpace;
         string ret;
-        while (!state.done)
+        while (!done)
         {
-            char first = state.first;
+            char first = first;
             if (!first.isAlphaNum && first != '-' && first != '_')
             {
                 break;
             }
-            ret ~= state.read;
+            ret ~= read;
         }
         return ret;
     }
@@ -164,15 +187,15 @@ struct FastParser
         while (true)
         {
             skipSpace;
-            assert(!state.done, "toplevel: file ended when reading function definition arguments");
-            if (state.first == ')')
+            assert(!done, "toplevel: file ended when reading function definition arguments");
+            if (first == ')')
             {
-                state.skip;
+                skip;
                 break;
             }
-            if (state.first == '(')
+            if (first == '(')
             {
-                state.skip;
+                skip;
                 string name = readName; 
                 args ~= Binding(name, readArgArray);
             }
@@ -186,33 +209,39 @@ struct FastParser
         return args;
     }
 
-    size_t emitIdent(string name)
+    Opcode emitIdent(string name)
     {
-        if (size_t* ptr = name in locals)
+        if (Opcode* ptr = name in locals)
         {
             return *ptr;
         }
         else
         {
-            size_t outreg = nregs++;
+            Opcode outreg = nregs++;
             ops ~= [opint, outreg, funcs[name]];
             return outreg;
         }
     }
 
-    size_t readExprMatch(Binding type)
+
+    Opcode opLength()
+    {
+        return offset + cast(Opcode) ops.length;
+    }
+
+    Opcode readExprMatch(Binding type)
     {
         skipSpace;
-        assert(!state.done, "expected expression at end of file");
-        if (state.first == '\'')
+        assert(!done, "expected expression at end of file");
+        if (first == '\'')
         {
-            state.skip;
-            assert(!state.done, "expected char literal at end of file");
-            char chr = state.read;
+            skip;
+            assert(!done, "expected char literal at end of file");
+            char chr = read;
             if (chr == '\\')
             {
-                assert(!state.done, "expected escape sequence");
-                chr = state.read;
+                assert(!done, "expected escape sequence");
+                chr = read;
                 switch (chr)
                 {
                 default:
@@ -228,21 +257,21 @@ struct FastParser
                     break;
                 }
             }
-            if (!state.done && state.first == '\'')
+            if (!done && first == '\'')
             {
-                state.skip;
+                skip;
             }
-            size_t outreg = nregs++;
-            ops ~= [opint, outreg, cast(size_t) chr];
+            Opcode outreg = nregs++;
+            ops ~= [opint, outreg, cast(Opcode) chr];
             return outreg;
         }
         bool startsOpenParen = false;
-        while (state.first == '(')
+        while (first == '(')
         {
             startsOpenParen = true;
-            state.skip;
+            skip;
             skipSpace;
-            assert(!state.done, "expected expression after paren at end of file");
+            assert(!done, "expected expression after paren at end of file");
         }
         string name = readName;
         scope (exit)
@@ -250,15 +279,15 @@ struct FastParser
             if (startsOpenParen)
             {
                 skipSpace;
-                assert(!state.done && state.first == ')', "expected close paren at end of expression");
-                state.skip;
+                assert(!done && first == ')', "expected close paren at end of expression");
+                skip;
                 skipSpace;
             }
         }
         if (startsOpenParen)
         {
             skipSpace;
-            if (!state.done && state.first == ')')
+            if (!done && first == ')')
             {
                 type.isFunc = true;
             }
@@ -267,68 +296,68 @@ struct FastParser
         switch (name)
         {
         case "or":
-            size_t lhs = readExprMatch(Binding.none);
-            size_t outreg = nregs++;
+            Opcode lhs = readExprMatch(Binding.none);
+            Opcode outreg = nregs++;
             ops ~= [opbeqi, lhs, 0];
-            size_t jzero = ops.length++;
-            size_t jnonzero = ops.length++;
-            ops[jnonzero] = ops.length;
+            Opcode jzero = cast(Opcode) ops.length++;
+            Opcode jnonzero = cast(Opcode) ops.length++;
+            ops[jnonzero] = opLength;
             ops ~= [opreg, outreg, lhs];
             ops ~= opjump;
-            size_t jout = ops.length++;
-            ops[jzero] = ops.length;
-            size_t rhs = readExprMatch(Binding.none);
+            Opcode jout = cast(Opcode) ops.length++;
+            ops[jzero] = opLength;
+            Opcode rhs = readExprMatch(Binding.none);
             ops ~= [opreg, outreg, rhs];
-            ops[jout] = ops.length;
+            ops[jout] = opLength;
             return outreg;
         case "and":
-            size_t lhs = readExprMatch(Binding.none);
-            size_t outreg = nregs++;
+            Opcode lhs = readExprMatch(Binding.none);
+            Opcode outreg = nregs++;
             ops ~= [opbeqi, lhs, 0];
-            size_t jzero = ops.length++;
-            size_t jnonzero = ops.length++;
-            ops[jzero] = ops.length;
+            Opcode jzero = cast(Opcode) ops.length++;
+            Opcode jnonzero = cast(Opcode) ops.length++;
+            ops[jzero] = opLength;
             ops ~= [opint, outreg, 0];
             ops ~= opjump;
-            size_t jout = ops.length++;
-            ops[jnonzero] = ops.length;
-            size_t rhs = readExprMatch(Binding.none);
+            Opcode jout = cast(Opcode) ops.length++;
+            ops[jnonzero] = opLength;
+            Opcode rhs = readExprMatch(Binding.none);
             ops ~= [opreg, outreg, rhs];
-            ops[jout] = ops.length;
+            ops[jout] = opLength;
             return outreg;
         case "do":
             readExprMatch(Binding.none);
             return readExprMatch(type);
         case "if":
-            size_t branch = readExprMatch(Binding.none);
+            Opcode branch = readExprMatch(Binding.none);
             ops ~= [opbb, branch];
-            size_t jfalse = ops.length++;
-            size_t jtrue = ops.length++;
-            size_t outreg = nregs++;
-            ops[jtrue] = ops.length;
-            size_t vtrue = readExprMatch(Binding.none);
+            Opcode jfalse = cast(Opcode) ops.length++;
+            Opcode jtrue = cast(Opcode) ops.length++;
+            Opcode outreg = nregs++;
+            ops[jtrue] = opLength;
+            Opcode vtrue = readExprMatch(Binding.none);
             ops ~= [opreg, outreg, vtrue];
             ops ~= opjump;
-            size_t jend = ops.length++;
-            ops[jfalse] = ops.length;
-            size_t vfalse = readExprMatch(Binding.none);
+            Opcode jend = cast(Opcode) ops.length++;
+            ops[jfalse] = opLength;
+            Opcode vfalse = readExprMatch(Binding.none);
             ops ~= [opreg, outreg, vfalse];
-            ops[jend] = ops.length;
+            ops[jend] = opLength;
             return outreg;
         case "let":
             string let = readName;
-            size_t where = readExprMatch(Binding.none);
+            Opcode where = readExprMatch(Binding.none);
             defs[let] = Binding.none;
             locals[let] = where;
-            size_t ret = readExprMatch(type);
+            Opcode ret = readExprMatch(type);
             defs.remove(let);
             locals.remove(let);
             return ret;
         default:
             if ('0' <= name[0] && name[0] <= '9')
             {
-                size_t outreg = nregs++;
-                ops ~= [opint, outreg, name.to!size_t];
+                Opcode outreg = nregs++;
+                ops ~= [opint, outreg, name.to!Opcode];
                 return outreg;
             }
             else if (type.isFunc)
@@ -342,43 +371,43 @@ struct FastParser
         }
     }
 
-    size_t readCall(string name)
+    Opcode readCall(string name)
     {
         Binding argTypes = defs[name];
         if (argTypes.isFunc)
         {
-            size_t[] argValues;
+            Opcode[] argValues;
             foreach (argType; argTypes.args)
             {
                 argValues ~= readExprMatch(argType);
             }
-            size_t outreg = nregs++;
-            if (size_t* ptr = name in locals)
+            Opcode outreg = nregs++;
+            if (Opcode* ptr = name in locals)
             {
-                ops ~= [opcalldyn, outreg, *ptr, argValues.length];
+                ops ~= [opcalldyn, outreg, *ptr, cast(Opcode) argValues.length];
                 ops ~= argValues;
             }
-            else if (size_t* ptr = name in funcs)
+            else if (Opcode* ptr = name in funcs)
             {
-                ops ~= [opcall, outreg, *ptr, argValues.length];
+                ops ~= [opcall, outreg, *ptr, cast(Opcode) argValues.length];
                 ops ~= argValues;
             }
-            else if (size_t* opptr = name in binops)
+            else if (Opcode* opptr = name in binops)
             {
                 ops ~= [*opptr, outreg, argValues[1], argValues[0]];
             }
-            else if (size_t* opcmp = name in cmpops)
+            else if (Opcode* opcmp = name in cmpops)
             {
                 ops ~= [*opcmp, argValues[1], argValues[0]];
-                size_t jfalse = ops.length++;
-                size_t jtrue = ops.length++;
-                ops[jfalse] = ops.length;
+                Opcode jfalse = cast(Opcode) ops.length++;
+                Opcode jtrue = cast(Opcode) ops.length++;
+                ops[jfalse] = opLength;
                 ops ~= [opint, outreg, 0];
                 ops ~= opjump;
-                size_t end = ops.length++;
-                ops[jtrue] = ops.length;
+                Opcode end = cast(Opcode) ops.length++;
+                ops[jtrue] = opLength;
                 ops ~= [opint, outreg, 1];
-                ops[end] = ops.length;
+                ops[end] = opLength;
             }
             else
             {
@@ -394,15 +423,15 @@ struct FastParser
                 else if (name == "eq")
                 {
                     ops ~= [opbeq, argValues[1], argValues[0]];
-                    size_t jfalse = ops.length++;
-                    size_t jtrue = ops.length++;
-                    ops[jfalse] = ops.length;
+                    Opcode jfalse = cast(Opcode) ops.length++;
+                    Opcode jtrue = cast(Opcode) ops.length++;
+                    ops[jfalse] = opLength;
                     ops ~= [opint, outreg, 0];
                     ops ~= opjump;
-                    size_t end = ops.length++;
-                    ops[jtrue] = ops.length;
+                    Opcode end = cast(Opcode) ops.length++;
+                    ops[jtrue] = opLength;
                     ops ~= [opint, outreg, 1];
-                    ops[end] = ops.length;
+                    ops[end] = opLength;
                 }
             }
             return outreg;
@@ -415,9 +444,8 @@ struct FastParser
 
     void readDef()
     {
-        skipSpace;
-        assert (state.first == '(');
-        state.skip;
+        assert (first == '(');
+        skip;
         string fname = readName;
         assert(fname.length != 0);
         Binding[] vals = readArgArray;
@@ -427,22 +455,22 @@ struct FastParser
             defs[val.name] = val;
         }
         skipSpace;
-        if (state.first == '?')
+        if (first == '?')
         {
-            state.skip;
+            skip;
         }
         else
         {
             ops ~= opfunc;
-            size_t jover = ops.length++;
-            ops ~= vals.length;
-            ops ~= fname.length;
+            Opcode jover = cast(Opcode) ops.length++;
+            ops ~= cast(Opcode) vals.length;
+            ops ~= cast(Opcode) fname.length;
             foreach (chr; fname)
             {
-                ops ~= cast(size_t) chr;
+                ops ~= cast(Opcode) chr;
             }
-            size_t nregswhere = ops.length++;
-            funcs[fname] = ops.length;
+            Opcode nregswhere = cast(Opcode) ops.length++;
+            funcs[fname] = opLength;
             nregs = 1;
             locals = null;
             foreach (arg; vals) 
@@ -450,24 +478,35 @@ struct FastParser
                 locals[arg.name] = nregs;
                 nregs += 1;
             }
-            size_t rr = readExprMatch(Binding.none);
+            Opcode rr = readExprMatch(Binding.none);
             ops ~= [opret, rr];
             ops[nregswhere] = nregs;
-            ops[jover] = ops.length;
+            ops[jover] = opLength;
         }
     }
 
-    void readDefs()
+    void readDefs(File outfile)
     {
-        while (true)
+        skipSpace;
+        while (!done)
         {
-            skipSpace;
-            if (state.done)
-            {
-                break;
-            }
             readDef;
+            if (ops.length > 1_000_000)
+            {
+                outfile.rawWrite(ops);
+                offset += cast(Opcode) ops.length;
+                ops = null;
+            }
+            skipSpace;
         }
         ops ~= [opcall, 0, funcs["main"], 0, opexit];
+        outfile.rawWrite(ops);
     }
+}
+
+void main(string[] args)
+{
+    Parser parser = Parser(args[1].readText);
+    File outfile = File("out.bc", "wb");
+    parser.readDefs(outfile);
 }

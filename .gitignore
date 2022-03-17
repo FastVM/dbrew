@@ -16,3 +16,4 @@ dbrew-test-*
 bin
 *.bc
 out.*
+fastcomp
