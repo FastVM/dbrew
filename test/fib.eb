@@ -14,7 +14,7 @@
 putchar add '0 mod 10 n
 
 (putn n)
-if lt n 9
+if  lt n 9
     do  putn div 10 n
         putd n
     putd n

@@ -43,6 +43,7 @@ enum opbltei = 39;
 enum opcalldyn = 40;
 
 alias Opcode = size_t;
+alias FileOpcode = int;
 
 struct Config {
   size_t gc_ents;

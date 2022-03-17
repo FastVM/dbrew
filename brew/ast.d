@@ -114,23 +114,14 @@ struct Form
         tfunc,
         tvalue,
     }
+
     Type form;
     Node[] args;
 
-    this(Args...)(Type f, Args as)
+    this(Type f, Node[] a)
     {
-        static foreach (a; as)
-        {
-            static if (is(typeof(a) == Node[]))
-            {
-                args ~= a;
-            }
-            else
-            {
-                args ~= node(a);
-            }
-        }
         form = f;
+        args = a;
     }
 
     string toString()

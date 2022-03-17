@@ -114,8 +114,24 @@ struct Emitter
             else if (size_t* ptr = name in funcs)
             {
                 size_t outreg = nregs++;
-                ops ~= [opcall, outreg, *ptr, kargs.length];
-                ops ~= kargs;
+                switch (kargs.length) {
+                case 0:
+                    ops ~= [opcall0, outreg, *ptr];
+                    break;
+                case 1:
+                    ops ~= [opcall1, outreg, *ptr, kargs[0]];
+                    break;
+                case 2:
+                    ops ~= [opcall2, outreg, *ptr, kargs[0], kargs[1]];
+                    break;
+                case 3:
+                    ops ~= [opcall3, outreg, *ptr, kargs[0], kargs[1], kargs[2]];
+                    break;
+                default:
+                    ops ~= [opcall, outreg, *ptr, kargs.length];
+                    ops ~= kargs;
+                    break;
+                }
                 return outreg;
             }
             else if (name == "putchar")

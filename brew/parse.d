@@ -101,27 +101,22 @@ struct Binding
     {
         if (isFunc)
         {
-            Node[] aargs;
+            Node[] aargs = [ident(name).node];
             foreach (arg; args)
             {
                 aargs ~= arg.toType;
             }
-            return form(Form.Type.tfunc, ident(name), aargs).node;
+            return form(Form.Type.tfunc, aargs).node;
         }
         else
         {
-            return form(Form.Type.tvalue, ident(name)).node;
+            return form(Form.Type.tvalue, [ident(name).node]).node;
         }
     }
 }
 
 struct Parser
 {
-    enum string hasScope = `
-Binding[string] oldDefs = defs.dup;
-scope(exit) defs = oldDefs;
-`;
-
     Binding[string] defs;
     ParseState state;
 
@@ -369,23 +364,22 @@ scope(exit) defs = oldDefs;
         switch (name)
         {
         case "or":
-            return form(Form.Type.or, readExprMatch(type), readExprMatch(type)).node;
+            return form(Form.Type.or, [readExprMatch(type), readExprMatch(type)]).node;
         case "and":
-            return form(Form.Type.and, readExprMatch(type), readExprMatch(type)).node;
+            return form(Form.Type.and, [readExprMatch(type), readExprMatch(type)]).node;
         case "do":
-            return form(Form.Type.do_, readExprMatch(type), readExprMatch(type)).node;
+            return form(Form.Type.do_, [readExprMatch(type), readExprMatch(type)]).node;
         case "if":
             return form(Form.Type.if_,
-                readExprMatch(Binding.none), readExprMatch(type),
-                readExprMatch(type)
+                [readExprMatch(Binding.none), readExprMatch(type),
+                readExprMatch(type)]
             ).node;
         case "let":
             Ident id = ident(readName);
             Node value = readExprMatch(Binding.none);
-            mixin(hasScope);
             defs[id.repr] = Binding(id.repr);
             Node inscope = readExprMatch(type);
-            return form(Form.Type.let, id, value, inscope).node;
+            return form(Form.Type.let, [id.node, value, inscope]).node;
         default:
             if (type.isFunc)
             {
@@ -443,12 +437,11 @@ scope(exit) defs = oldDefs;
         }
         Binding[] vals = readArgArray;
         defs[fname] = Binding(fname, vals);
-        mixin(hasScope);
         foreach (val; vals)
         {
             defs[val.name] = val;
         }
-        Node[] argNames;
+        Node[] argNames = [ident(fname).node];
         foreach (val; vals)
         {
             argNames ~= val.toType;
@@ -457,11 +450,11 @@ scope(exit) defs = oldDefs;
         if (state.first == '?')
         {
             state.skip;
-            return form(Form.Type.extern_, ident(fname), argNames).node;
+            return form(Form.Type.extern_, argNames).node;
         }
         else
         {
-            return form(Form.Type.func, ident(fname), argNames, readExprMatch(Binding.none)).node;
+            return form(Form.Type.func, argNames ~ readExprMatch(Binding.none)).node;
         }
     }
 
