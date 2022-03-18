@@ -8,14 +8,13 @@ import brew.parse;
 import brew.comp;
 import brew.ast;
 import brew.vm;
-
-version = fast;
+import brew.opt;
 
 Opcode[] optCompile(string src) {
 	Parser parser = Parser();
 	parser.state = ParseState(src);
-	Node ast = parser.readDefs();
-	return compile(ast);
+	Form[] ast = parser.readDefs();
+	return compile(ast.allopt);
 }
 
 void main(string[] args) {

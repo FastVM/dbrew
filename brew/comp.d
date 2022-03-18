@@ -22,14 +22,6 @@ struct Emitter {
 
     size_t compileType(Form form) {
         final switch (form.form) {
-        case Form.Type.program:
-            foreach (arg; form.args) {
-                compile(arg);
-            }
-            size_t outreg = nregs++;
-            ops ~= [opcall, outreg, funcs["main"], 0];
-            ops ~= opexit;
-            return 0;
         case Form.Type.do_:
             size_t last = 0;
             foreach (arg; form.args) {
@@ -37,7 +29,11 @@ struct Emitter {
             }
             return last;
         case Form.Type.extern_:
-            return 0;
+            return size_t.max;
+        case Form.Type.ret:
+            size_t reg = compile(form.args[0]);
+            ops ~= [opret, reg];
+            return size_t.max;
         case Form.Type.func:
             string name = form.args[0].value.ident.repr;
             ops ~= opfunc;
@@ -55,11 +51,10 @@ struct Emitter {
                 locals[arg.value.ident.repr] = nregs;
                 nregs += 1;
             }
-            size_t rr = compile(form.args[$ - 1]);
-            ops ~= [opret, rr];
+            compile(form.args[$ - 1]);
             ops[nregswhere] = nregs;
             ops[jover] = ops.length;
-            return 0;
+            return size_t.max;
         case Form.Type.call:
             string name = form.args[0].value.ident.repr;
             if (size_t[2]* ptr = name in binops) {
@@ -301,8 +296,12 @@ struct Emitter {
     }
 }
 
-Opcode[] compile(Node node) {
+Opcode[] compile(Form[] forms) {
     Emitter emit;
-    emit.compile(node);
+    foreach (arg; forms) {
+        emit.compile(arg.node);
+    }
+    emit.ops ~= [opcall, 0, emit.funcs["main"], 0];
+    emit.ops ~= opexit;
     return emit.ops;
 }

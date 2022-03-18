@@ -337,7 +337,7 @@ struct Parser {
         }
     }
 
-    Node readDef() {
+    Form readDef() {
         skipSpace;
         if (state.first != '(') {
             raise("toplevel: expected a function opening paren");
@@ -359,14 +359,14 @@ struct Parser {
         skipSpace;
         if (state.first == '?') {
             state.skip;
-            return form(Form.Type.extern_, argNames).node;
+            return form(Form.Type.extern_, argNames);
         } else {
-            return form(Form.Type.func, argNames ~ readExprMatch(Binding.none)).node;
+            return form(Form.Type.func, argNames ~ form(Form.Type.ret, [readExprMatch(Binding.none)]).node);
         }
     }
 
-    Node readDefs() {
-        Node[] all;
+    Form[] readDefs() {
+        Form[] all;
         while (true) {
             skipSpace;
             if (state.done) {
@@ -374,6 +374,6 @@ struct Parser {
             }
             all ~= readDef;
         }
-        return form(Form.Type.program, all).node;
+        return all;
     }
 }

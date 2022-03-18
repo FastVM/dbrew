@@ -93,7 +93,7 @@ struct Form {
         call,
         extern_,
         func,
-        program,
+        ret,
     }
 
     Type form;
