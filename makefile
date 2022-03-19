@@ -11,7 +11,7 @@ COBJS := $(CFILES:%.c=%.o)
 DOBJS := $(DFILES:%.d=%.o)
 
 bin/dbrew: $(DOBJS) $(COBJS)
-	$(DC) -betterC $(DOPT) $(DOBJS) $(COBJS) -of$(@)
+	$(CC) $(DOPT) $(DOBJS) $(COBJS) -o$(@)
 
 $(DOBJS): $(@:%.o=%.d)
 	$(DC) -betterC $(DOPT) -of$(@) -c $(@:%.o=%.d)

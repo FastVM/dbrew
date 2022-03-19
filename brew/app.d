@@ -52,7 +52,11 @@ extern(C) int main(int argc, const(char*)* args) {
 		return 1;
 	}
 	if (run) {
-		runvm(res);
+		int nargs = 0;
+		while (args[nargs] != null) {
+			nargs += 1;
+		}
+		runvm(res, nargs, args);
 	} else {
 		Array!FileOpcode ops;
 		foreach (op; res) {

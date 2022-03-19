@@ -26,5 +26,5 @@ if  lt 2 n
         fib sub 2 n
 
 (main)
-do  putn fib 35
+do  putn fib 10
     putchar '\n
