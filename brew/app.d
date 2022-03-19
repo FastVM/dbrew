@@ -1,59 +1,70 @@
-import std.file : writeFile = write, readFile = readText;
-import std.stdio;
-import std.array;
-import std.conv;
-import std.range;
-import std.parallelism;
+import core.stdc.stdio;
+import core.stdc.stdlib;
+import core.stdc.string;
+import core.stdc.ctype;
+import brew.util;
 import brew.parse;
 import brew.comp;
 import brew.ast;
 import brew.vm;
 import brew.opt;
 
-Opcode[] optCompile(string src) {
+Array!Opcode optCompile(Array!char src) {
 	Parser parser = Parser();
 	parser.state = ParseState(src);
-	Form[] ast = parser.readDefs();
+	Array!Form ast = parser.readDefs();
 	return compile(ast.allopt);
 }
 
-void main(string[] args) {
-	args = args[1 .. $];
-	if (args.length == 0) {
-		throw new Exception("args: [input] [output]\n");
+extern(C) int main(int argc, const(char*)* args) {
+	if (argc <= 1) {
+		printf("args: [input] [output]\n");
+		return 1;
 	}
 	size_t count = 1;
 	bool run = false;
-	while (args[0][0] == '-') {
-		switch (args[0]) {
-		case "-r":
+	while (args[1][0] == '-') {
+		if (!strcmp(args[1], "-r")) {
 			run = true;
-			args = args[1 .. $];
-			break;
-		case "-n":
-			args = args[1 .. $];
-			count = args[0].to!size_t;
-			args = args[1 .. $];
-			break;
-		default:
-			throw new Exception("unknown option: " ~ args[0]);
+			args += 1;
+		} else {
+			printf("unknown option: %s\n", args[1]);
+			return 1;
 		}
 	}
-	string src = args[0].readFile;
-	Opcode[] res;
+	Array!char src;
+	{
+		FILE* fp = fopen(args[1], "r");
+		scope(exit) fclose(fp);
+		while (!feof(fp)) {
+			char chr = cast(char) fgetc(fp);
+			if (isprint(chr)) {
+				src ~= chr;
+			}
+		}
+	}
+	Array!Opcode res;
 	foreach (index; 0 .. count) {
 		res = optCompile(src);
 	}
-	if (res is null) {
-		return;
+	if (res.length == 0) {
+		printf("compiler failed to compile: empty buffer\n");
+		return 1;
 	}
 	if (run) {
 		runvm(res);
 	} else {
-		FileOpcode[] ops;
+		Array!FileOpcode ops;
 		foreach (op; res) {
 			ops ~= cast(FileOpcode) op;
 		}
-		File("out.bc", "wb").rawWrite(ops);
+		{
+			FILE* output = fopen("out.bc", "wb");
+			scope(exit) fclose(output);
+			foreach (op; ops) {
+				fwrite(ops.ptr, FileOpcode.sizeof, ops.length, output);
+			}
+		}
 	}
+	return 0;
 }

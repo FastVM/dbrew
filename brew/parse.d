@@ -1,48 +1,39 @@
 module brew.parse;
 
-import std.ascii;
-import std.string;
-import std.conv;
-import std.stdio;
+import core.stdc.stdio;
+import core.stdc.stdlib;
 import brew.ast;
-
-class ParseError : Exception {
-    size_t line;
-    size_t col;
-
-    this(size_t line, size_t col, string msg) {
-        super("at Line " ~ line.to!string ~ " Column " ~ col.to!string ~ ": " ~ msg);
-    }
-}
+import brew.util;
 
 struct ParseState {
-    string src;
+    Array!char src;
+    size_t head;
     size_t line;
     size_t col;
 
-    this(string str) {
+    this(Array!char str) {
         src = str;
         line = 1;
         col = 1;
     }
 
     void skip() {
-        if (src[0] == '\n') {
+        if (src[head] == '\n') {
             line += 1;
             col = 1;
         } else {
             col += 1;
         }
-        src = src[1 .. $];
+        head += 1;
     }
 
     bool done() {
-        return src.length == 0;
+        return src.length <= head;
     }
 
     char first() {
         assert(!done);
-        return src[0];
+        return src[head];
     }
 
     char read() {
@@ -53,40 +44,33 @@ struct ParseState {
 }
 
 struct Binding {
-    string name;
+    Array!char name;
     bool isFunc;
-    Binding[] args;
+    Array!Binding args;
 
     static Binding none() {
-        return Binding(null);
+        return Binding.init;
     }
 
-    this(string name) {
+    this(Array!char name) {
         this.name = name;
         this.isFunc = false;
     }
 
-    this(string name, Binding[] args) {
+    this(Array!char name, Array!Binding args) {
         this.name = name;
         this.isFunc = true;
         this.args = args;
     }
-
-    void toString(void delegate(string) sink) {
-        sink(name);
-        foreach (arg; args) {
-            sink(" ");
-            arg.toString(sink);
-        }
-    }
 }
 
 struct Parser {
-    Binding[string] defs;
+    Table!Binding defs;
     ParseState state;
 
     void raise(string msg) {
-        throw new ParseError(state.line, state.col, msg);
+        printf("parse error(%zu:%zu) -> %.*s\n", state.line, state.col, cast(int) msg.length, msg.ptr);
+        exit(1);
     }
 
     void skipSpace() {
@@ -94,7 +78,7 @@ struct Parser {
             if (state.done) {
                 break;
             }
-            if (state.first.isWhite) {
+            if (state.first == ' ' || state.first == '\n' || state.first == '\r' || state.first == '\t') {
                 state.skip;
                 continue;
             }
@@ -116,12 +100,12 @@ struct Parser {
         }
     }
 
-    string readName() {
+    Array!char readName() {
         skipSpace;
-        string ret;
+        Array!char ret;
         while (!state.done) {
             char first = state.first;
-            if (!first.isAlphaNum && first != '-' && first != '_') {
+            if (!('0' <= first && first <= '9') && !('a' <= first && first <= 'z') && !('A' <= first && first <= 'Z') && first != '-' && first != '_') {
                 break;
             }
             ret ~= state.read;
@@ -129,9 +113,9 @@ struct Parser {
         return ret;
     }
 
-    Binding[] readArgArray() {
+    Array!Binding readArgArray() {
         skipSpace;
-        Binding[] args;
+        Array!Binding args;
         while (true) {
             skipSpace;
             if (state.done) {
@@ -144,10 +128,10 @@ struct Parser {
             }
             if (state.first == '(') {
                 state.skip;
-                string name = readName;
+                Array!char name = readName;
                 args ~= Binding(name, readArgArray);
             } else {
-                string name = readName;
+                Array!char name = readName;
                 skipSpace;
                 args ~= Binding(name);
             }
@@ -163,7 +147,7 @@ struct Parser {
         }
         if (state.first == '\"') {
             state.skip;
-            string value;
+            Array!char value;
             if (state.done) {
                 raise("expected string literal at end of file");
                 assert(false);
@@ -191,7 +175,7 @@ struct Parser {
                         value ~= '\r';
                         break;
                     default:
-                        raise("unknown escape sequence: \\" ~ chr);
+                        raise("unknown escape sequence");
                         assert(false);
                     }
                 } else {
@@ -237,14 +221,14 @@ struct Parser {
                     chr = '\r';
                     break;
                 default:
-                    raise("unknown escape sequence: \\" ~ chr);
+                    raise("unknown escape sequence");
                     assert(false);
                 }
             }
             if (!state.done && state.first == '\'') {
                 state.skip;
             }
-            return num(chr.to!size_t).node;
+            return num(cast(size_t) chr).node;
         }
         bool startsOpenParen = false;
         while (state.first == '(') {
@@ -256,7 +240,7 @@ struct Parser {
                 assert(false);
             }
         }
-        string name = readName;
+        Array!char name = readName;
         scope (exit) {
             if (startsOpenParen) {
                 skipSpace;
@@ -282,7 +266,7 @@ struct Parser {
             raise("expression expected");
             assert(false);
         }
-        switch (name) {
+        switch (name.ptr[0..name.length]) {
         case "or":
             return form(Form.Type.or, [readExprMatch(type), readExprMatch(type)]).node;
         case "and":
@@ -305,7 +289,6 @@ struct Parser {
             Node value = readExprMatch(Binding.none);
             defs[id.repr] = Binding(id.repr);
             Node inscope = readExprMatch(type);
-            defs.remove(id.repr);
             return form(Form.Type.let, [id.node, value, inscope]).node;
         default:
             if (type.isFunc) {
@@ -316,11 +299,11 @@ struct Parser {
         }
     }
 
-    Node readCall(string name) {
+    Node readCall(Array!char name) {
         if (Binding* argTypesPtr = name in defs) {
             if (argTypesPtr.isFunc) {
-                Binding[] argTypes = argTypesPtr.args;
-                Node[] argValues = [ident(name).node];
+                Array!Binding argTypes = argTypesPtr.args;
+                Array!Node argValues = [ident(name).node];
                 foreach (argType; argTypes) {
                     argValues ~= readExprMatch(argType);
                 }
@@ -329,10 +312,15 @@ struct Parser {
                 return ident(name).node;
             }
         }
-        if (name.isNumeric) {
-            return num(name.to!size_t).node;
+        if ('0' <= name[0] && name[0] <= '9') {
+            size_t ret = 0;
+            foreach (chr; name) {
+                ret *= 10;
+                ret += chr - '0';
+            }
+            return num(ret).node;
         } else {
-            raise("variable " ~ name ~ " not found");
+            raise("variable not found");
             assert(false);
         }
     }
@@ -343,16 +331,16 @@ struct Parser {
             raise("toplevel: expected a function opening paren");
         }
         state.skip;
-        string fname = readName;
+        Array!char fname = readName;
         if (fname.length == 0) {
             raise("toplevel: expected a function name");
         }
-        Binding[] vals = readArgArray;
+        Array!Binding vals = readArgArray;
         defs[fname] = Binding(fname, vals);
         foreach (val; vals) {
             defs[val.name] = val;
         }
-        Node[] argNames = [ident(fname).node];
+        Array!Node argNames = [ident(fname).node];
         foreach (val; vals) {
             argNames ~= ident(val.name).node;
         }
@@ -361,12 +349,13 @@ struct Parser {
             state.skip;
             return form(Form.Type.extern_, argNames);
         } else {
-            return form(Form.Type.func, argNames ~ form(Form.Type.ret, [readExprMatch(Binding.none)]).node);
+            argNames ~= form(Form.Type.ret, [readExprMatch(Binding.none)]).node;
+            return form(Form.Type.func, argNames);
         }
     }
 
-    Form[] readDefs() {
-        Form[] all;
+    Array!Form readDefs() {
+        Array!Form all;
         while (true) {
             skipSpace;
             if (state.done) {

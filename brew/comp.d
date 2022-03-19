@@ -1,24 +1,22 @@
 module brew.comp;
 
-import std.stdio;
-import std.conv;
-import std.conv;
 import brew.ast;
 import brew.vm;
+import brew.util;
 
-enum size_t[2][string] binops = [
-        "add": [opadd, opaddi],
-        "sub": [opsub, opsubi],
-        "mul": [opmul, opmuli],
-        "div": [opdiv, opdivi],
-        "mod": [opmod, opmodi],
-    ];
+// enum size_t[2][string] binops = [
+//         "add": [opadd, opaddi],
+//         "sub": [opsub, opsubi],
+//         "mul": [opmul, opmuli],
+//         "div": [opdiv, opdivi],
+//         "mod": [opmod, opmodi],
+//     ];
 
 struct Emitter {
     size_t nregs;
-    size_t[string] funcs;
-    size_t[string] locals;
-    Opcode[] ops;
+    Table!size_t funcs;
+    Table!size_t locals;
+    Array!Opcode ops;
 
     size_t compileType(Form form) {
         final switch (form.form) {
@@ -35,7 +33,7 @@ struct Emitter {
             ops ~= [opret, reg];
             return size_t.max;
         case Form.Type.func:
-            string name = form.args[0].value.ident.repr;
+            Array!char name = form.args[0].value.ident.repr;
             ops ~= opfunc;
             size_t jover = ops.length++;
             ops ~= form.args.length - 2;
@@ -56,9 +54,28 @@ struct Emitter {
             ops[jover] = ops.length;
             return size_t.max;
         case Form.Type.call:
-            string name = form.args[0].value.ident.repr;
-            if (size_t[2]* ptr = name in binops) {
-                size_t[2] op = *ptr;
+            Array!char name = form.args[0].value.ident.repr;
+            if (name == "add" || name == "sub" || name == "mul" || name == "div" || name == "mod") {
+                size_t[2] op;
+                switch (name.ptr[0..name.length]) {
+                case "add":
+                    op = [opadd, opaddi];
+                    break;
+                case "sub":
+                    op = [opsub, opsubi];
+                    break;
+                case "mul":
+                    op = [opmul, opmuli];
+                    break;
+                case "div":
+                    op = [opdiv, opdivi];
+                    break;
+                case "mod":
+                    op = [opmod, opmodi];
+                    break;
+                default:
+                    assert(false);
+                }
                 if (form.args[1].type == Node.Type.num) {
                     size_t lhs = form.args[1].value.num.value;
                     size_t rhs = compile(form.args[2]);
@@ -79,7 +96,7 @@ struct Emitter {
                     return outreg;
                 }
             }
-            size_t[] kargs;
+            Array!size_t kargs;
             foreach (arg; form.args[1 .. $]) {
                 kargs ~= compile(arg);
             }
@@ -160,7 +177,7 @@ struct Emitter {
                 ops[end] = ops.length;
                 return outreg;
             }
-            assert(false, name);
+            assert(false, "name not found");
         case Form.Type.let:
             size_t where = compile(form.args[1]);
             locals[form.args[0].value.ident.repr] = where;
@@ -200,9 +217,9 @@ struct Emitter {
             size_t jfalse;
             if (form.args[0].type == Node.Type.form && form.args[0].value.form.form == Form
                 .Type.call) {
-                string name = form.args[0].value.form.args[0].value.ident.repr;
-                Node[] args = form.args[0].value.form.args[1 .. $];
-                switch (name) {
+                Array!char name = form.args[0].value.form.args[0].value.ident.repr;
+                Array!Node args = form.args[0].value.form.args[1 .. $];
+                switch (name.ptr[0..name.length]) {
                 case "eq":
                     if (args[0].type == Node.Type.num) {
                         size_t rhs = compile(args[1]);
@@ -228,6 +245,11 @@ struct Emitter {
                         ops ~= [opblti, rhs, args[0].value.num.value];
                         jfalse = ops.length++;
                         jtrue = ops.length++;
+                    } else if (args[1].type == Node.Type.num) {
+                        size_t lhs = compile(args[0]);
+                        ops ~= [opbltei, lhs, args[1].value.num.value];
+                        jtrue = ops.length++;
+                        jfalse = ops.length++;
                     } else {
                         size_t lhs = compile(args[0]);
                         size_t rhs = compile(args[1]);
@@ -257,7 +279,7 @@ struct Emitter {
             return outreg;
         }
 
-        assert(false, form.form.to!string);
+        assert(false, "bad form");
     }
 
     size_t compileType(Ident id) {
@@ -296,7 +318,7 @@ struct Emitter {
     }
 }
 
-Opcode[] compile(Form[] forms) {
+Array!Opcode compile(Array!Form forms) {
     Emitter emit;
     foreach (arg; forms) {
         emit.compile(arg.node);

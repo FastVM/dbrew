@@ -1,6 +1,7 @@
 module brew.opt;
 
 import brew.ast;
+import brew.util;
 
 Form retopt(Form obj) {
     if (obj.form == Form.Type.ret) {
@@ -17,19 +18,11 @@ Form retopt(Form obj) {
         }
         return obj;
     }
-    Node[] args;
-    foreach (arg; obj.args) {
-        if (arg.type == Node.Type.form) {
-            args ~= retopt(arg.value.form).node;
-        } else {
-            args ~= arg;
-        }
-    }
-    return form(obj.form, args);
+    return obj;
 }
 
-Form[] allopt(Form[] funcs) {
-    Form[] ret;
+Array!Form allopt(Array!Form funcs) {
+    Array!Form ret;
     foreach (func; funcs) {
         ret ~= retopt(func);
     }

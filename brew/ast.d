@@ -1,14 +1,15 @@
 module brew.ast;
+import brew.util;
 
-import std.algorithm;
-import std.conv;
-import std.meta;
-
-Form form(Args...)(Args args) {
-    return Form(args);
+Form form(Form.Type type, Array!Node args) {
+    return Form(type, args);
 }
 
-Ident ident(string name) {
+Form form(size_t n)(Form.Type type, Node[n] args) {
+    return Form(type, args);
+}
+
+Ident ident(Array!char name) {
     return Ident(name);
 }
 
@@ -16,7 +17,7 @@ Number num(size_t num) {
     return Number(num);
 }
 
-String str(string str) {
+String str(Array!char str) {
     return String(str);
 }
 
@@ -67,19 +68,6 @@ struct Node {
         value.str = str;
         type = Type.str;
     }
-
-    string toString() {
-        final switch (type) {
-        case Type.form:
-            return value.form.to!string;
-        case Type.ident:
-            return value.ident.to!string;
-        case Type.num:
-            return value.num.to!string;
-        case Type.str:
-            return value.str.to!string;
-        }
-    }
 }
 
 /// call of function or operator call
@@ -97,36 +85,25 @@ struct Form {
     }
 
     Type form;
-    Node[] args;
+    Array!Node args;
 
-    this(Type f, Node[] a) {
+    this(Type f, Array!Node a) {
         form = f;
         args = a;
     }
 
-    string toString() {
-        char[] ret;
-        ret ~= "(";
-        ret ~= form.to!string;
-        foreach (i, v; args) {
-            ret ~= " ";
-            ret ~= v.to!string;
-        }
-        ret ~= ")";
-        return cast(string) ret;
+    this(size_t n)(Type f, Node[n] a) {
+        form = f;
+        args = Array!Node(a);
     }
 }
 
 /// ident or number, detects at runtime
 struct Ident {
-    string repr;
+    Array!char repr;
 
-    this(string s) {
+    this(Array!char s) {
         repr = s;
-    }
-
-    string toString() {
-        return repr;
     }
 }
 
@@ -137,21 +114,13 @@ struct Number {
     this(T)(T v) {
         value = v;
     }
-
-    string toString() {
-        return "[" ~ value.to!string ~ "]";
-    }
 }
 
 /// string value literal
 struct String {
-    string value;
+    Array!char value;
 
-    this(T)(T v) {
+    this(Array!char v) {
         value = v;
-    }
-
-    string toString() {
-        return "[" ~ value.to!string ~ "]";
     }
 }
