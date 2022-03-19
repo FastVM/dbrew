@@ -6,7 +6,7 @@ import core.stdc.stdio;
 struct Array(Type) {
     size_t length;
     size_t alloc;
-    Type *ptr;
+    Type* ptr;
 
     this(size_t n)(Type[n] values) {
         alloc = n;
@@ -16,7 +16,8 @@ struct Array(Type) {
         }
     }
 
-    this(typeof(null) n) {}
+    this(typeof(null) n) {
+    }
 
     ~this() {
         // free(ptr);
@@ -24,7 +25,7 @@ struct Array(Type) {
 
     Array!Type dup() {
         Array!Type ret;
-        foreach (value; ptr[0..length]) {
+        foreach (value; ptr[0 .. length]) {
             ret ~= value;
         }
         return ret;
@@ -42,7 +43,7 @@ struct Array(Type) {
         return ptr[index];
     }
 
-    void opOpAssign(string op: "~")(Type value) {
+    void opOpAssign(string op : "~")(Type value) {
         if (length + 1 >= alloc) {
             alloc = (length + 1) * 2;
             ptr = cast(Type*) realloc(cast(void*) ptr, Type.sizeof * alloc);
@@ -51,20 +52,20 @@ struct Array(Type) {
         length += 1;
     }
 
-    void opOpAssign(string op: "~", size_t n)(Type[n] values) {
+    void opOpAssign(string op : "~", size_t n)(Type[n] values) {
         foreach (value; values) {
             this ~= value;
         }
     }
 
-    void opOpAssign(string op: "~", Arg)(Arg arg) {
+    void opOpAssign(string op : "~", Arg)(Arg arg) {
         foreach (val; arg) {
             this ~= val;
         }
     }
 
     int opApply(int delegate(Type) dg) {
-        foreach (index; 0..length) {
+        foreach (index; 0 .. length) {
             if (int res = dg(ptr[index])) {
                 return res;
             }
@@ -73,7 +74,7 @@ struct Array(Type) {
     }
 
     int opApply(int delegate(size_t, Type) dg) {
-        foreach (index; 0..length) {
+        foreach (index; 0 .. length) {
             if (int res = dg(index, ptr[index])) {
                 return res;
             }
@@ -103,38 +104,52 @@ struct Array(Type) {
 }
 
 struct Table(Type) {
-    Array!(Array!char) keys;
-    Array!Type values;
+    Table!Type[95]* values;
+    Type value;
+    bool has;
 
     void opAssign(typeof(null) n) {
-        keys = null;
-        values = null;
+        has = false;
     }
 
-    void opIndexAssign(String)(Type value, String key) {
-        if (Type* ptr = key in this) {
-            *ptr = value;
+    void opIndexAssign(String)(Type arg, String key) {
+        has = true;
+        if (key.length == 0) {
+            value = arg;
         } else {
-            keys ~= key;
-            values ~= value;
+            if (values is null) {
+                values = cast(Table!Type[95]*) malloc((Table!Type[984]).sizeof);
+                foreach (i; 0..95) {
+                    (*values)[i] = Table!Type.init;
+                }
+            }
+            (*values)[key[0] - 32][key.ptr[1 .. key.length]] = arg;
         }
     }
 
     Type opIndex(String)(String find) {
-        foreach (index, key; keys) {
-            if (key == find) {
-                return values[index];
-            }
+        if (!has) {
+            assert(false, "bounds error");
         }
-        assert(false, "bounds error");
+        if (find.length == 0) {
+            return value;
+        }
+        if (values is null) {
+            assert(false, "bounds error");
+        }
+        return (*values)[find[0] - 32][find.ptr[1 .. find.length]];
     }
-    
-    Type* opBinaryRight(string op: "in", String)(String find) {
-        foreach (index, key; keys) {
-            if (key == find) {
-                return &values[index];
+
+    Type* opBinaryRight(string op : "in", String)(String find) {
+        if (find.length == 0) {
+            if (!has) {
+                return null;
             }
+            return &value;
         }
-        return null;
+        if (values is null) {
+            return null;
+        }
+        return find.ptr[1 .. find.length] in (*values)[find[0] - 32];
     }
 }

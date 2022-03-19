@@ -45,8 +45,8 @@ struct ParseState {
 
 struct Binding {
     Array!char name;
-    bool isFunc;
     Array!Binding args;
+    bool isFunc;
 
     static Binding none() {
         return Binding.init;
@@ -70,7 +70,7 @@ struct Parser {
 
     void raise(string msg) {
         printf("parse error(%zu:%zu) -> %.*s\n", state.line, state.col, cast(int) msg.length, msg.ptr);
-        exit(1);
+        assert(false);
     }
 
     void skipSpace() {

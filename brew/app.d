@@ -65,9 +65,7 @@ extern(C) int main(int argc, const(char*)* args) {
 		{
 			FILE* output = fopen("out.bc", "wb");
 			scope(exit) fclose(output);
-			foreach (op; ops) {
-				fwrite(ops.ptr, FileOpcode.sizeof, ops.length, output);
-			}
+			fwrite(ops.ptr, FileOpcode.sizeof, ops.length, output);
 		}
 	}
 	return 0;
