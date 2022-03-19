@@ -1,5 +1,4 @@
 module brew.util;
-
 import core.stdc.stdlib;
 import core.stdc.stdio;
 
@@ -16,11 +15,9 @@ struct Array(Type) {
         }
     }
 
-    this(typeof(null) n) {
-    }
+    this(typeof(null) n) {}
 
     ~this() {
-        // free(ptr);
     }
 
     Array!Type dup() {
@@ -103,8 +100,27 @@ struct Array(Type) {
     }
 }
 
+ubyte charno(char c) {
+    if ('0' <= c && c <= '9') {
+        return cast(ubyte) (c - '0');
+    }
+    if ('A' <= c && c <= 'Z') {
+        return cast(ubyte) (c - 'A' + 10);
+    }
+    if ('a' <= c && c <= 'z') {
+        return cast(ubyte) (c - 'a' + 36);
+    }
+    if (c == '_') {
+        return 62;
+    }
+    if (c == '-') {
+        return 63;
+    }
+    assert(false);
+}
+
 struct Table(Type) {
-    Table!Type[95]* values;
+    Table!Type[64]* values;
     Type value;
     bool has;
 
@@ -118,12 +134,12 @@ struct Table(Type) {
             value = arg;
         } else {
             if (values is null) {
-                values = cast(Table!Type[95]*) malloc((Table!Type[984]).sizeof);
-                foreach (i; 0..95) {
+                values = cast(Table!Type[64]*) malloc((Table!Type[64]).sizeof);
+                foreach (i; 0..64) {
                     (*values)[i] = Table!Type.init;
                 }
             }
-            (*values)[key[0] - 32][key.ptr[1 .. key.length]] = arg;
+            (*values)[charno(key[0])][key.ptr[1 .. key.length]] = arg;
         }
     }
 
@@ -137,7 +153,7 @@ struct Table(Type) {
         if (values is null) {
             assert(false, "bounds error");
         }
-        return (*values)[find[0] - 32][find.ptr[1 .. find.length]];
+        return (*values)[charno(find[0])][find.ptr[1 .. find.length]];
     }
 
     Type* opBinaryRight(string op : "in", String)(String find) {
@@ -150,6 +166,6 @@ struct Table(Type) {
         if (values is null) {
             return null;
         }
-        return find.ptr[1 .. find.length] in (*values)[find[0] - 32];
+        return find.ptr[1 .. find.length] in (*values)[charno(find[0])];
     }
 }

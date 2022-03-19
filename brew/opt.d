@@ -16,7 +16,6 @@ Form retopt(Form obj) {
             Form iffalse = form(Form.Type.ret, [retform.args[2]]).retopt;
             return form(Form.Type.if_, [cond, iftrue.node, iffalse.node]);
         }
-        return obj;
     }
     return obj;
 }
