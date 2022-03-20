@@ -315,9 +315,10 @@ struct Emitter {
 
 Array!Opcode compile(Array!Form forms) {
     Emitter emit;
-    foreach (arg; forms) {
+    foreach (index, arg; forms) {
         emit.compile(arg.node);
     }
+    assert("main" in emit.funcs);
     emit.ops ~= [opcall, 0, emit.funcs["main"], 0];
     emit.ops ~= opexit;
     return emit.ops;

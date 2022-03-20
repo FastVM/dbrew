@@ -1,13 +1,15 @@
-import core.stdc.stdio;
-import core.stdc.stdlib;
-import core.stdc.string;
-import core.stdc.ctype;
 import brew.util;
 import brew.parse;
 import brew.comp;
 import brew.ast;
 import brew.vm;
 import brew.opt;
+
+version (WebAssembly) {
+	extern(C) void __assert(const char *msg, const char *file, int line) {
+		printf("ERROR: %s\n", msg);
+	}
+}
 
 Array!Opcode optCompile(Array!char src) {
 	Parser parser = Parser();
@@ -23,9 +25,13 @@ extern(C) int main(int argc, const(char*)* args) {
 	}
 	size_t count = 1;
 	bool run = false;
+	bool read = true;
 	while (args[1][0] == '-') {
 		if (!strcmp(args[1], "-r")) {
 			run = true;
+			args += 1;
+		} else if (!strcmp(args[1], "-i")) {
+			read = false;
 			args += 1;
 		} else {
 			printf("unknown option: %s\n", args[1]);
@@ -33,14 +39,35 @@ extern(C) int main(int argc, const(char*)* args) {
 		}
 	}
 	Array!char src;
-	{
+	if (read) {
 		FILE* fp = fopen(args[1], "r");
+		if (fp is null) {
+			printf("could not open file: %s\n", args[1]);
+			return 1;
+		}
 		scope(exit) fclose(fp);
 		while (!feof(fp)) {
-			char chr = cast(char) fgetc(fp);
-			if (isprint(chr)) {
-				src ~= chr;
+			char[2048] buf;
+			size_t got = fread(buf.ptr, char.sizeof, 2048, fp);
+			printf("got: %zu\n", got);
+			foreach (chr; buf[0..got]) {
+				if (isprint(chr)) {
+					src ~= chr;
+				}
 			}
+		}
+	} else {
+		while (args[1] !is null) {
+			if (!strcmp(args[1], "--")) {
+				args += 1;
+				break;
+			}
+			size_t index = 0;
+			while (args[1][index] != '\0') {
+				src ~= args[1][index];
+				index += 1;
+			}
+			args += 1;
 		}
 	}
 	Array!Opcode res;
@@ -52,6 +79,7 @@ extern(C) int main(int argc, const(char*)* args) {
 		return 1;
 	}
 	if (run) {
+		args += 1;
 		int nargs = 0;
 		while (args[nargs] != null) {
 			nargs += 1;
@@ -64,6 +92,10 @@ extern(C) int main(int argc, const(char*)* args) {
 		}
 		{
 			FILE* output = fopen("out.bc", "wb");
+			if (output is null) {
+				printf("could not open file: %s\n", args[1]);
+				return 1;
+			}
 			scope(exit) fclose(output);
 			fwrite(ops.ptr, FileOpcode.sizeof, ops.length, output);
 		}

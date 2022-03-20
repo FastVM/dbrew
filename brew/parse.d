@@ -1,7 +1,5 @@
 module brew.parse;
 
-import core.stdc.stdio;
-import core.stdc.stdlib;
 import brew.ast;
 import brew.util;
 

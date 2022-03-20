@@ -17,3 +17,4 @@ bin
 *.bc
 out.*
 fastcomp
+wasi-libc
