@@ -10,7 +10,7 @@ version (WebAssembly) {
 
 Array!Opcode optCompile(Array!char src) {
 	Parser parser = Parser();
-	parser.state = ParseState(src);
+	parser.state = ParseState(cast(string) src.ptr[0..src.length]);
 	parser.readDefs();
 	// foreach (op; parser.ops) {
 	// 	printf("%zu\n", op);
@@ -52,8 +52,8 @@ extern(C) int main(int argc, const(char*)* args) {
 		}
 		scope(exit) fclose(fp);
 		while (!feof(fp)) {
-			char[2048] buf;
-			size_t got = fread(buf.ptr, char.sizeof, 2048, fp);
+			char[2 ^^ 16] buf = void;
+			size_t got = fread(buf.ptr, char.sizeof, buf.length, fp);
 			foreach (chr; buf[0..got]) {
 				if (isprint(chr)) {
 					src ~= chr;

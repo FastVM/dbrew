@@ -4,12 +4,12 @@ import brew.vm;
 import brew.util;
 
 struct ParseState {
-    Array!char src;
+    string src;
     size_t head;
     size_t line;
     size_t col;
 
-    this(Array!char str) {
+    this(string str) {
         src = str;
         line = 1;
         col = 1;
@@ -42,7 +42,7 @@ struct ParseState {
 }
 
 struct Binding {
-    Array!char name;
+    string name;
     Array!Binding args;
     bool isFunc;
 
@@ -50,12 +50,12 @@ struct Binding {
         return Binding.init;
     }
 
-    this(Array!char name) {
+    this(string name) {
         this.name = name;
         this.isFunc = false;
     }
 
-    this(Array!char name, Array!Binding args) {
+    this(string name, Array!Binding args) {
         this.name = name;
         this.isFunc = true;
         this.args = args;
@@ -104,19 +104,17 @@ struct Parser {
         }
     }
 
-    Array!char readName() {
+    string readName() {
         skipSpace;
-        Array!char ret;
-        ret.ptr = &state.src[state.head];
+        size_t start = state.head;
         while (!state.done) {
             char first = state.first;
             if (!('0' <= first && first <= '9') && !('a' <= first && first <= 'z') && !('A' <= first && first <= 'Z') && first != '-' && first != '_') {
                 break;
             }
             state.skip;
-            ret.length += 1;
         }
-        return ret;
+        return state.src[start .. state.head];
     }
 
     Array!Binding readArgArray() {
@@ -134,10 +132,10 @@ struct Parser {
             }
             if (state.first == '(') {
                 state.skip;
-                Array!char name = readName;
+                string name = readName;
                 args ~= Binding(name, readArgArray);
             } else {
-                Array!char name = readName;
+                string name = readName;
                 skipSpace;
                 args ~= Binding(name);
             }
@@ -204,7 +202,7 @@ struct Parser {
                 assert(false);
             }
         }
-        Array!char name = readName;
+        string name = readName;
         scope (exit) {
             if (startsOpenParen) {
                 skipSpace;
@@ -281,7 +279,7 @@ struct Parser {
             ops[jend] = ops.length;
             return outreg;
         case "let":
-            Array!char id = readName;
+            string id = readName;
             size_t where = readExprMatch(Binding.none);
             defs[id] = Binding(id);
             locals[id] = cast(int) where;
@@ -306,7 +304,7 @@ struct Parser {
         }
     }
 
-    size_t readCall(Array!char name) {
+    size_t readCall(string name) {
         if (Binding* argTypesPtr = name in defs) {
             if (argTypesPtr.isFunc) {
                 Array!Binding argTypes = argTypesPtr.args;
@@ -424,7 +422,7 @@ struct Parser {
             raise("toplevel: expected a function opening paren");
         }
         state.skip;
-        Array!char fname = readName;
+        string fname = readName;
         if (fname.length == 0) {
             raise("toplevel: expected a function name");
         }
