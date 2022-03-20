@@ -1,6 +1,6 @@
 module brew.parse;
 
-import brew.ast;
+import brew.vm;
 import brew.util;
 
 struct ParseState {
@@ -65,6 +65,12 @@ struct Binding {
 struct Parser {
     Table!Binding defs;
     ParseState state;
+
+    size_t nregs;
+    Table!int funcs;
+    Table!int locals;
+
+    Array!Opcode ops;
 
     void raise(string msg) {
         printf("parse error(%zu:%zu) -> %.*s\n", state.line, state.col, cast(int) msg.length, msg.ptr);
@@ -137,55 +143,11 @@ struct Parser {
         return args;
     }
 
-    Node readExprMatch(Binding type) {
+    size_t readExprMatch(Binding type) {
         skipSpace;
         if (state.done) {
             raise("expected expression at end of file");
             assert(false);
-        }
-        if (state.first == '\"') {
-            state.skip;
-            Array!char value;
-            if (state.done) {
-                raise("expected string literal at end of file");
-                assert(false);
-            }
-            while (state.first != '\"') {
-                char chr = state.read;
-                if (chr == '\\') {
-                    switch (chr) {
-                    case '\'':
-                        value ~= '\'';
-                        break;
-                    case '"':
-                        value ~= '"';
-                        break;
-                    case '\\':
-                        value ~= '\\';
-                        break;
-                    case 't':
-                        value ~= '\t';
-                        break;
-                    case 'n':
-                        value ~= '\n';
-                        break;
-                    case 'r':
-                        value ~= '\r';
-                        break;
-                    default:
-                        raise("unknown escape sequence");
-                        assert(false);
-                    }
-                } else {
-                    value ~= chr;
-                }
-                if (state.done) {
-                    raise("unterminated string literal");
-                    assert(false);
-                }
-            }
-            state.skip;
-            return str(value).node;
         }
         if (state.first == '\'') {
             state.skip;
@@ -226,7 +188,9 @@ struct Parser {
             if (!state.done && state.first == '\'') {
                 state.skip;
             }
-            return num(cast(size_t) chr).node;
+            size_t outreg = nregs++;
+            ops ~= [opint, outreg, cast(size_t) chr];
+            return outreg;
         }
         bool startsOpenParen = false;
         while (state.first == '(') {
@@ -266,49 +230,175 @@ struct Parser {
         }
         switch (name.ptr[0..name.length]) {
         case "or":
-            return form(Form.Type.or, [readExprMatch(type), readExprMatch(type)]).node;
+            size_t lhs = readExprMatch(type);
+            size_t outreg = nregs++;
+            ops ~= [opbeqi, lhs, 0];
+            size_t jzero = ops.length++;
+            size_t jnonzero = ops.length++;
+            ops[jnonzero] = ops.length;
+            ops ~= [opreg, outreg, lhs];
+            ops ~= opjump;
+            size_t jout = ops.length++;
+            ops[jzero] = ops.length;
+            size_t rhs = readExprMatch(type);
+            ops ~= [opreg, outreg, rhs];
+            ops[jout] = ops.length;
+            return outreg;
         case "and":
-            return form(Form.Type.and, [
-                    readExprMatch(type), readExprMatch(type)
-                ]).node;
+            size_t lhs = readExprMatch(type);
+            size_t outreg = nregs++;
+            ops ~= [opbeqi, lhs, 0];
+            size_t jzero = ops.length++;
+            size_t jnonzero = ops.length++;
+            ops[jzero] = ops.length;
+            ops ~= [opint, outreg, 0];
+            ops ~= opjump;
+            size_t jout = ops.length++;
+            ops[jnonzero] = ops.length;
+            size_t rhs = readExprMatch(type);
+            ops ~= [opreg, outreg, rhs];
+            ops[jout] = ops.length;
+            return outreg;
         case "do":
-            return form(Form.Type.do_, [
-                    readExprMatch(type), readExprMatch(type)
-                ]).node;
+            readExprMatch(Binding.none);
+            return readExprMatch(type);
         case "if":
-            return form(Form.Type.if_,
-                [
-                    readExprMatch(Binding.none), readExprMatch(type),
-                    readExprMatch(type)
-                ]
-            ).node;
+            size_t branch = readExprMatch(Binding.none);
+            ops ~= [opbb, branch];
+            size_t jfalse = ops.length++;
+            size_t jtrue = ops.length++;
+            size_t outreg = nregs++;
+            ops[jtrue] = ops.length;
+            size_t vtrue = readExprMatch(type);
+            ops ~= [opreg, outreg, vtrue];
+            ops ~= opjump;
+            size_t jend = ops.length++;
+            ops[jfalse] = ops.length;
+            size_t vfalse = readExprMatch(type);
+            ops ~= [opreg, outreg, vfalse];
+            ops[jend] = ops.length;
+            return outreg;
         case "let":
-            Ident id = ident(readName);
-            Node value = readExprMatch(Binding.none);
-            defs[id.repr] = Binding(id.repr);
-            Node inscope = readExprMatch(type);
-            defs.remove(id.repr);
-            return form(Form.Type.let, [id.node, value, inscope]).node;
+            Array!char id = readName;
+            size_t where = readExprMatch(Binding.none);
+            defs[id] = Binding(id);
+            locals[id] = cast(int) where;
+            size_t inscope = readExprMatch(type);
+            defs.remove(id);
+            locals.remove(id);
+            return inscope;
         default:
             if (type.isFunc) {
-                return ident(name).node;
+                if (int* ptr = name in locals) {
+                    return cast(size_t) *ptr;
+                } else if (int* ptr = name in funcs) {
+                    size_t outreg = nregs++;
+                    ops ~= [opint, outreg, cast(size_t) *ptr];
+                    return outreg;
+                } else {
+                    assert(false);
+                }
             } else {
                 return readCall(name);
             }
         }
     }
 
-    Node readCall(Array!char name) {
+    size_t readCall(Array!char name) {
         if (Binding* argTypesPtr = name in defs) {
             if (argTypesPtr.isFunc) {
                 Array!Binding argTypes = argTypesPtr.args;
-                Array!Node argValues = [ident(name).node];
+                Array!size_t argRegs;
                 foreach (argType; argTypes) {
-                    argValues ~= readExprMatch(argType);
+                    argRegs ~= readExprMatch(argType);
                 }
-                return form(Form.Type.call, argValues).node;
+                if (name == "add" || name == "sub" || name == "mul" || name == "div" || name == "mod") {
+                    size_t op;
+                    switch (name.ptr[0..name.length]) {
+                    case "add":
+                        op = opadd;
+                        break;
+                    case "sub":
+                        op = opsub;
+                        break;
+                    case "mul":
+                        op = opmul;
+                        break;
+                    case "div":
+                        op = opdiv;
+                        break;
+                    case "mod":
+                        op = opmod;
+                        break;
+                    default:
+                        assert(false);
+                    }
+                    size_t outreg = nregs++;
+                    ops ~= op;
+                    ops ~= outreg;
+                    ops ~= argRegs[1];
+                    ops ~= argRegs[0];
+                    return outreg;
+                }
+                if (int* ptr = name in locals) {
+                    size_t outreg = nregs++;
+                    ops ~= opcalldyn;
+                    ops ~= outreg;
+                    ops ~= *ptr;
+                    ops ~= argRegs.length;
+                    ops ~= argRegs;
+                    return outreg;
+                } else if (int* ptr = name in funcs) {
+                    size_t outreg = nregs++;
+                    ops ~= opcall;
+                    ops ~= outreg;
+                    ops ~= *ptr;
+                    ops ~= argRegs.length;
+                    ops ~= argRegs;
+                    return outreg;
+                } else if (name == "putchar") {
+                    ops ~= opputchar;
+                    ops ~= argRegs[0];
+                    return argRegs[0];
+                } else if (name == "lt") {
+                    size_t outreg = nregs++;
+                    ops ~= [opblt, argRegs[1], argRegs[0]];
+                    size_t jfalse = ops.length++;
+                    size_t jtrue = ops.length++;
+                    ops[jfalse] = ops.length;
+                    ops ~= [opint, outreg, 0];
+                    ops ~= opjump;
+                    size_t end = ops.length++;
+                    ops[jtrue] = ops.length;
+                    ops ~= [opint, outreg, 1];
+                    ops[end] = ops.length;
+                    return outreg;
+                } else if (name == "eq") {
+                    size_t outreg = nregs++;
+                    ops ~= [opbeq, argRegs[1], argRegs[0]];
+                    size_t jfalse = ops.length++;
+                    size_t jtrue = ops.length++;
+                    ops[jfalse] = ops.length;
+                    ops ~= [opint, outreg, 0];
+                    ops ~= opjump;
+                    size_t end = ops.length++;
+                    ops[jtrue] = ops.length;
+                    ops ~= [opint, outreg, 1];
+                    ops[end] = ops.length;
+                    return outreg;
+                } else {
+                    assert(false);
+                }
             } else {
-                return ident(name).node;
+                if (int* ptr = name in locals) {
+                    return cast(size_t) *ptr;
+                } else if (int* ptr = name in funcs) {
+                    size_t outreg = nregs++;
+                    ops ~= [opint, outreg, cast(size_t) *ptr];
+                    return outreg;
+                } else {
+                    assert(false);
+                }
             }
         }
         if ('0' <= name[0] && name[0] <= '9') {
@@ -317,14 +407,16 @@ struct Parser {
                 ret *= 10;
                 ret += chr - '0';
             }
-            return num(ret).node;
+            size_t outreg = nregs++;
+            ops ~= [opint, outreg, ret];
+            return outreg;
         } else {
             raise("variable not found");
             assert(false);
         }
     }
 
-    Form readDef() {
+    void readDef() {
         skipSpace;
         if (state.first != '(') {
             raise("toplevel: expected a function opening paren");
@@ -339,29 +431,44 @@ struct Parser {
         foreach (val; vals) {
             defs[val.name] = val;
         }
-        Array!Node argNames = [ident(fname).node];
-        foreach (val; vals) {
-            argNames ~= ident(val.name).node;
-        }
         skipSpace;
         if (state.first == '?') {
             state.skip;
-            return form(Form.Type.extern_, argNames);
         } else {
-            argNames ~= form(Form.Type.ret, [readExprMatch(Binding.none)]).node;
-            return form(Form.Type.func, argNames);
+            ops ~= opfunc;
+            size_t jover = ops.length++;
+            ops ~= vals.length;
+            // ops ~= 0;
+            ops ~= fname.length;
+            foreach (chr; fname) {
+                ops ~= chr;
+            }
+            size_t nregswhere = ops.length++;
+            funcs[fname] = cast(int) ops.length;
+            nregs = 1;
+            locals = null;
+            foreach (arg; vals) {
+                locals[arg.name] = cast(int) nregs;
+                nregs += 1;
+            }
+            size_t ret = readExprMatch(Binding.none);
+            ops ~= opret;
+            ops ~= ret;
+            ops[nregswhere] = nregs;
+            ops[jover] = ops.length;
         }
     }
 
-    Array!Form readDefs() {
-        Array!Form all;
+    void readDefs() {
         while (true) {
             skipSpace;
             if (state.done) {
                 break;
             }
-            all ~= readDef;
+            readDef;
         }
-        return all;
+        assert("main" in funcs);
+        ops ~= [opcall, 0, funcs["main"], 0];
+        ops ~= opexit;
     }
 }

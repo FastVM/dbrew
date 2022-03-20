@@ -1,11 +1,12 @@
 
 OPT ?= -O
 
+LOPT ?= $(OPT)
 COPT ?= $(OPT)
 DOPT ?= $(OPT)
 
 CFILES := minivm/vm/gc.c minivm/vm/vm.c
-DFILES := brew/app.d brew/ast.d brew/comp.d brew/opt.d brew/parse.d brew/vm.d brew/util.d
+DFILES := brew/app.d brew/parse.d brew/vm.d brew/util.d
 
 COBJS := $(CFILES:%.c=%.o)
 DOBJS := $(DFILES:%.d=%.o)

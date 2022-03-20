@@ -1,9 +1,6 @@
 import brew.util;
 import brew.parse;
-import brew.comp;
-import brew.ast;
 import brew.vm;
-import brew.opt;
 
 version (WebAssembly) {
 	extern(C) void __assert(const char *msg, const char *file, int line) {
@@ -14,8 +11,11 @@ version (WebAssembly) {
 Array!Opcode optCompile(Array!char src) {
 	Parser parser = Parser();
 	parser.state = ParseState(src);
-	Array!Form ast = parser.readDefs();
-	return compile(ast.allopt);
+	parser.readDefs();
+	// foreach (op; parser.ops) {
+	// 	printf("%zu\n", op);
+	// }
+	return parser.ops;
 }
 
 extern(C) int main(int argc, const(char*)* args) {
