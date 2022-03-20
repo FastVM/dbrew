@@ -12,7 +12,7 @@ COBJS := $(CFILES:%.c=%.o)
 DOBJS := $(DFILES:%.d=%.o)
 
 bin/dbrew: $(DOBJS) $(COBJS)
-	mkdir bin
+	mkdir -p bin
 	$(CC) $(LOPT) $(DOBJS) $(COBJS) -o$(@) $(LFLAGS)
 
 objs: dobjs cobjs
