@@ -15,8 +15,7 @@ bin/dbrew: $(DOBJS) $(COBJS)
 	$(CC) $(LOPT) $(DOBJS) $(COBJS) -o$(@) $(LFLAGS)
 
 bin/dbrew.wasm: .dummy
-	$(MAKE) -B OPT=-g CC='emcc' DFLAGS+='--march=wasm32' LFLAGS+='-s WASM=1 -s STANDALONE_WASM -s EXPORTED_FUNCTIONS=_main -g3'
-	# mv bin/dbrew bin/dbrew.wasm
+	$(MAKE) -B OPT='$(OPT)' CC='emcc' DFLAGS+='--march=wasm32' LFLAGS+='-s WASM=1 -s STANDALONE_WASM $(OPT)'
 
 objs: dobjs cobjs
 

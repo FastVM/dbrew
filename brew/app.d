@@ -24,8 +24,13 @@ extern(C) int main(int argc, const(char*)* args) {
 		return 1;
 	}
 	size_t count = 1;
-	bool run = false;
-	bool read = true;
+	version (WebAssembly) {
+		bool run = true;
+		bool read = false;
+	} else {
+		bool run = false;
+		bool read = true;
+	}
 	while (args[1][0] == '-') {
 		if (!strcmp(args[1], "-r")) {
 			run = true;
@@ -49,7 +54,6 @@ extern(C) int main(int argc, const(char*)* args) {
 		while (!feof(fp)) {
 			char[2048] buf;
 			size_t got = fread(buf.ptr, char.sizeof, 2048, fp);
-			printf("got: %zu\n", got);
 			foreach (chr; buf[0..got]) {
 				if (isprint(chr)) {
 					src ~= chr;
