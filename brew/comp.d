@@ -4,18 +4,10 @@ import brew.ast;
 import brew.vm;
 import brew.util;
 
-// enum size_t[2][string] binops = [
-//         "add": [opadd, opaddi],
-//         "sub": [opsub, opsubi],
-//         "mul": [opmul, opmuli],
-//         "div": [opdiv, opdivi],
-//         "mod": [opmod, opmodi],
-//     ];
-
 struct Emitter {
     size_t nregs;
-    Table!size_t funcs;
-    Table!size_t locals;
+    Table!int funcs;
+    Table!int locals;
     Array!Opcode ops;
 
     size_t compileType(Form form) {
@@ -42,11 +34,11 @@ struct Emitter {
                 ops ~= chr;
             }
             size_t nregswhere = ops.length++;
-            funcs[name] = ops.length;
+            funcs[name] = cast(int) ops.length;
             nregs = 1;
             locals = null;
             foreach (arg; form.args[1 .. $ - 1]) {
-                locals[arg.value.ident.repr] = nregs;
+                locals[arg.value.ident.repr] = cast(int) nregs;
                 nregs += 1;
             }
             compile(form.args[$ - 1]);
@@ -100,12 +92,12 @@ struct Emitter {
             foreach (arg; form.args[1 .. $]) {
                 kargs ~= compile(arg);
             }
-            if (size_t* ptr = name in locals) {
+            if (int* ptr = name in locals) {
                 size_t outreg = nregs++;
-                ops ~= [opcalldyn, outreg, *ptr, kargs.length];
+                ops ~= [opcalldyn, outreg, cast(size_t) *ptr, kargs.length];
                 ops ~= kargs;
                 return outreg;
-            } else if (size_t* ptr = name in funcs) {
+            } else if (int* ptr = name in funcs) {
                 size_t outreg = nregs++;
                 switch (kargs.length) {
                 case 0:
@@ -180,8 +172,11 @@ struct Emitter {
             assert(false, "name not found");
         case Form.Type.let:
             size_t where = compile(form.args[1]);
-            locals[form.args[0].value.ident.repr] = where;
-            return compile(form.args[2]);
+            Array!char name = form.args[0].value.ident.repr;
+            locals[name] = cast(int) where;
+            size_t ret = compile(form.args[2]);
+            locals.remove(name);
+            return ret;
         case Form.Type.and:
             size_t lhs = compile(form.args[0]);
             size_t outreg = nregs++;
@@ -283,11 +278,11 @@ struct Emitter {
     }
 
     size_t compileType(Ident id) {
-        if (size_t* ptr = id.repr in locals) {
-            return *ptr;
-        } else if (size_t* ptr = id.repr in funcs) {
+        if (int* ptr = id.repr in locals) {
+            return cast(size_t) *ptr;
+        } else if (int* ptr = id.repr in funcs) {
             size_t outreg = nregs++;
-            ops ~= [opint, outreg, *ptr];
+            ops ~= [opint, outreg, cast(size_t) *ptr];
             return outreg;
         } else {
             assert(false);

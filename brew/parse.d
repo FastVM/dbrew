@@ -289,6 +289,7 @@ struct Parser {
             Node value = readExprMatch(Binding.none);
             defs[id.repr] = Binding(id.repr);
             Node inscope = readExprMatch(type);
+            defs.remove(id.repr);
             return form(Form.Type.let, [id.node, value, inscope]).node;
         default:
             if (type.isFunc) {

@@ -3,9 +3,9 @@ import core.stdc.stdlib;
 import core.stdc.stdio;
 
 struct Array(Type) {
-    size_t length;
-    size_t alloc;
     Type* ptr;
+    uint length;
+    uint alloc;
 
     this(size_t n)(Type[n] values) {
         alloc = n;
@@ -13,11 +13,6 @@ struct Array(Type) {
         foreach (value; values) {
             this ~= value;
         }
-    }
-
-    this(typeof(null) n) {}
-
-    ~this() {
     }
 
     Array!Type dup() {
@@ -102,13 +97,13 @@ struct Array(Type) {
 
 ubyte charno(char c) {
     if ('0' <= c && c <= '9') {
-        return cast(ubyte) (c - '0');
+        return cast(ubyte)(c - '0');
     }
     if ('A' <= c && c <= 'Z') {
-        return cast(ubyte) (c - 'A' + 10);
+        return cast(ubyte)(c - 'A' + 10);
     }
     if ('a' <= c && c <= 'z') {
-        return cast(ubyte) (c - 'a' + 36);
+        return cast(ubyte)(c - 'a' + 36);
     }
     if (c == '_') {
         return 62;
@@ -126,37 +121,37 @@ struct Table(Type) {
 
     void opAssign(typeof(null) n) {
         has = false;
+        if (values !is null) {
+            foreach (index; 0 .. 64) {
+                (*values)[index] = null;
+            }
+        }
     }
 
-    void opIndexAssign(String)(Type arg, String key) {
+    void set(string key, Type arg) {
         has = true;
         if (key.length == 0) {
             value = arg;
         } else {
             if (values is null) {
                 values = cast(Table!Type[64]*) malloc((Table!Type[64]).sizeof);
-                foreach (i; 0..64) {
+                foreach (i; 0 .. 64) {
                     (*values)[i] = Table!Type.init;
                 }
             }
-            (*values)[charno(key[0])][key.ptr[1 .. key.length]] = arg;
+            (*values)[charno(key[0])].set(key[1 .. $], arg);
         }
     }
 
-    Type opIndex(String)(String find) {
-        if (!has) {
-            assert(false, "bounds error");
-        }
+    Type get(string find) {
         if (find.length == 0) {
+            assert(has, "bounds check failed");
             return value;
         }
-        if (values is null) {
-            assert(false, "bounds error");
-        }
-        return (*values)[charno(find[0])][find.ptr[1 .. find.length]];
+        return (*values)[charno(find[0])].get(find[1 .. $]);
     }
 
-    Type* opBinaryRight(string op : "in", String)(String find) {
+    Type* refget(string find) {
         if (find.length == 0) {
             if (!has) {
                 return null;
@@ -166,6 +161,30 @@ struct Table(Type) {
         if (values is null) {
             return null;
         }
-        return find.ptr[1 .. find.length] in (*values)[charno(find[0])];
+        return (*values)[charno(find[0])].refget(find[1 .. $]);
+    }
+
+    void remove(string key) {
+        if (key.length == 0) {
+            has = false;
+        } else {
+            (*values)[charno(key[0])].remove(key[1 .. $]);
+        }
+    }
+
+    void opIndexAssign(String)(Type arg, String key) {
+        set(cast(string) key.ptr[0 .. key.length], arg);
+    }
+
+    void remove(Array!char key) {
+        remove(cast(string) key.ptr[0 .. key.length]);
+    }
+
+    Type opIndex(String)(String find) {
+        return get(cast(string) find.ptr[0 .. find.length]);
+    }
+
+    Type* opBinaryRight(string op : "in", String)(String find) {
+        return refget(cast(string) find.ptr[0 .. find.length]);
     }
 }
