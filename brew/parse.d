@@ -107,12 +107,14 @@ struct Parser {
     Array!char readName() {
         skipSpace;
         Array!char ret;
+        ret.ptr = &state.src[state.head];
         while (!state.done) {
             char first = state.first;
             if (!('0' <= first && first <= '9') && !('a' <= first && first <= 'z') && !('A' <= first && first <= 'Z') && first != '-' && first != '_') {
                 break;
             }
-            ret ~= state.read;
+            state.skip;
+            ret.length += 1;
         }
         return ret;
     }
@@ -438,11 +440,7 @@ struct Parser {
             ops ~= opfunc;
             size_t jover = ops.length++;
             ops ~= vals.length;
-            // ops ~= 0;
-            ops ~= fname.length;
-            foreach (chr; fname) {
-                ops ~= chr;
-            }
+            ops ~= 0;
             size_t nregswhere = ops.length++;
             funcs[fname] = cast(int) ops.length;
             nregs = 1;
@@ -460,6 +458,8 @@ struct Parser {
     }
 
     void readDefs() {
+        ops ~= opjump;
+        size_t jover = ops.length++;
         while (true) {
             skipSpace;
             if (state.done) {
@@ -467,6 +467,7 @@ struct Parser {
             }
             readDef;
         }
+        ops[jover] = ops.length;
         assert("main" in funcs);
         ops ~= [opcall, 0, funcs["main"], 0];
         ops ~= opexit;
