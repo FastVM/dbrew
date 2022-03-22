@@ -1,6 +1,7 @@
 
 OPT ?= -O
 
+LOPT ?= $(OPT)
 COPT ?= $(OPT)
 DOPT ?= $(OPT)
 
