@@ -143,8 +143,6 @@ struct Table(Type) {
             foreach (index; 0 .. 64) {
                 (*values)[index] = null;
             }
-            free(values);
-            values = null;
         }
     }
 
