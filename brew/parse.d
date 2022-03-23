@@ -41,29 +41,8 @@ struct ParseState {
     }
 }
 
-struct Binding {
-    string name;
-    Array!Binding args;
-    bool isFunc;
-
-    static Binding none() {
-        return Binding.init;
-    }
-
-    this(string name) {
-        this.name = name;
-        this.isFunc = false;
-    }
-
-    this(string name, Array!Binding args) {
-        this.name = name;
-        this.isFunc = true;
-        this.args = args;
-    }
-}
-
 struct Parser {
-    Table!Binding defs;
+    Table!uint defs;
     ParseState state;
 
     size_t nregs;
@@ -117,9 +96,10 @@ struct Parser {
         return state.src[start .. state.head];
     }
 
-    Array!Binding readArgArray() {
+    uint readArgArray() {
         skipSpace;
-        Array!Binding args;
+        uint count;
+        uint args;
         while (true) {
             skipSpace;
             if (state.done) {
@@ -130,20 +110,27 @@ struct Parser {
                 state.skip;
                 break;
             }
+            args <<= 1;
             if (state.first == '(') {
                 state.skip;
                 string name = readName;
-                args ~= Binding(name, readArgArray);
+                locals[name] = cast(uint) nregs++;
+                defs[name] = readArgArray;
             } else {
                 string name = readName;
-                skipSpace;
-                args ~= Binding(name);
+                locals[name] = cast(uint) nregs++;
+                defs[name] = 1;
+                args |= 1;
             }
+            count += 1;
         }
+        args <<= 4;
+        args |= count;
+        args <<= 1;
         return args;
     }
 
-    size_t readExprMatch(Binding type) {
+    size_t readExprMatch(bool isFunc) {
         skipSpace;
         if (state.done) {
             raise("expected expression at end of file");
@@ -221,7 +208,7 @@ struct Parser {
         if (startsOpenParen) {
             skipSpace;
             if (!state.done && state.first == ')') {
-                type.isFunc = true;
+                isFunc = true;
             }
         }
         if (name.length == 0) {
@@ -230,7 +217,7 @@ struct Parser {
         }
         switch (name.ptr[0..name.length]) {
         case "or":
-            size_t lhs = readExprMatch(type);
+            size_t lhs = readExprMatch(isFunc);
             size_t outreg = nregs++;
             ops ~= [opbeqi, lhs, 0];
             size_t jzero = ops.length++;
@@ -240,12 +227,12 @@ struct Parser {
             ops ~= opjump;
             size_t jout = ops.length++;
             ops[jzero] = ops.length;
-            size_t rhs = readExprMatch(type);
+            size_t rhs = readExprMatch(isFunc);
             ops ~= [opreg, outreg, rhs];
             ops[jout] = ops.length;
             return outreg;
         case "and":
-            size_t lhs = readExprMatch(type);
+            size_t lhs = readExprMatch(isFunc);
             size_t outreg = nregs++;
             ops ~= [opbeqi, lhs, 0];
             size_t jzero = ops.length++;
@@ -255,40 +242,40 @@ struct Parser {
             ops ~= opjump;
             size_t jout = ops.length++;
             ops[jnonzero] = ops.length;
-            size_t rhs = readExprMatch(type);
+            size_t rhs = readExprMatch(isFunc);
             ops ~= [opreg, outreg, rhs];
             ops[jout] = ops.length;
             return outreg;
         case "do":
-            readExprMatch(Binding.none);
-            return readExprMatch(type);
+            readExprMatch(false);
+            return readExprMatch(isFunc);
         case "if":
-            size_t branch = readExprMatch(Binding.none);
+            size_t branch = readExprMatch(false);
             ops ~= [opbb, branch];
             size_t jfalse = ops.length++;
             size_t jtrue = ops.length++;
             size_t outreg = nregs++;
             ops[jtrue] = ops.length;
-            size_t vtrue = readExprMatch(type);
+            size_t vtrue = readExprMatch(isFunc);
             ops ~= [opreg, outreg, vtrue];
             ops ~= opjump;
             size_t jend = ops.length++;
             ops[jfalse] = ops.length;
-            size_t vfalse = readExprMatch(type);
+            size_t vfalse = readExprMatch(isFunc);
             ops ~= [opreg, outreg, vfalse];
             ops[jend] = ops.length;
             return outreg;
         case "let":
             string id = readName;
-            size_t where = readExprMatch(Binding.none);
-            defs[id] = Binding(id);
+            size_t where = readExprMatch(false);
+            defs[id] = 1;
             locals[id] = cast(int) where;
-            size_t inscope = readExprMatch(type);
+            size_t inscope = readExprMatch(isFunc);
             defs.remove(id);
             locals.remove(id);
             return inscope;
         default:
-            if (type.isFunc) {
+            if (isFunc) {
                 if (uint* ptr = name in locals) {
                     return cast(size_t) *ptr;
                 } else if (uint* ptr = name in funcs) {
@@ -305,15 +292,17 @@ struct Parser {
     }
 
     size_t readCall(string name) {
-        if (Binding* argTypesPtr = name in defs) {
-            if (argTypesPtr.isFunc) {
-                Array!Binding argTypes = argTypesPtr.args;
-                // Array!size_t argRegs;
+        if (uint* argTypesPtr = name in defs) {
+            uint argTypes = *argTypesPtr;
+            bool isFunc = (argTypes & 1) == 0;
+            argTypes >>= 1;
+            if (isFunc) {
+                size_t nArgRegs = argTypes & 15;
+                argTypes >>= 4;
                 size_t[16] argRegs;
-                size_t nArgRegs = 0;
-                foreach (index, argType; argTypes) {
-                    argRegs[index] = readExprMatch(argType);
-                    nArgRegs = index;
+                foreach (index; 0..nArgRegs) {
+                    argRegs[index] = readExprMatch((argTypes & 1) == 0);
+                    argTypes >>= 1;
                 }
                 if (name == "add" || name == "sub" || name == "mul" || name == "div" || name == "mod") {
                     size_t op;
@@ -429,28 +418,21 @@ struct Parser {
         if (fname.length == 0) {
             raise("toplevel: expected a function name");
         }
-        Array!Binding vals = readArgArray;
-        defs[fname] = Binding(fname, vals);
-        foreach (val; vals) {
-            defs[val.name] = val;
-        }
+        nregs = 1;
+        locals = null;
+        uint key = readArgArray;
+        defs[fname] = key;
         skipSpace;
         if (state.first == '?') {
             state.skip;
         } else {
             ops ~= opfunc;
             size_t jover = ops.length++;
-            ops ~= vals.length;
+            ops ~= (key >> 1) & 15;
             ops ~= 0;
             size_t nregswhere = ops.length++;
             funcs[fname] = cast(int) ops.length;
-            nregs = 1;
-            locals = null;
-            foreach (arg; vals) {
-                locals[arg.name] = cast(int) nregs;
-                nregs += 1;
-            }
-            size_t ret = readExprMatch(Binding.none);
+            size_t ret = readExprMatch(false);
             ops ~= opret;
             ops ~= ret;
             ops[nregswhere] = nregs;
