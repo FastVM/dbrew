@@ -18,3 +18,5 @@ bin
 out.*
 fastcomp
 wasi-libc
+perf.data
+perf.data.old

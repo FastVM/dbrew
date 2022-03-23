@@ -67,8 +67,8 @@ struct Parser {
     ParseState state;
 
     size_t nregs;
-    Table!int funcs;
-    Table!int locals;
+    Table!uint funcs;
+    Table!uint locals;
 
     Array!Opcode ops;
 
@@ -289,9 +289,9 @@ struct Parser {
             return inscope;
         default:
             if (type.isFunc) {
-                if (int* ptr = name in locals) {
+                if (uint* ptr = name in locals) {
                     return cast(size_t) *ptr;
-                } else if (int* ptr = name in funcs) {
+                } else if (uint* ptr = name in funcs) {
                     size_t outreg = nregs++;
                     ops ~= [opint, outreg, cast(size_t) *ptr];
                     return outreg;
@@ -308,9 +308,12 @@ struct Parser {
         if (Binding* argTypesPtr = name in defs) {
             if (argTypesPtr.isFunc) {
                 Array!Binding argTypes = argTypesPtr.args;
-                Array!size_t argRegs;
-                foreach (argType; argTypes) {
-                    argRegs ~= readExprMatch(argType);
+                // Array!size_t argRegs;
+                size_t[16] argRegs;
+                size_t nArgRegs = 0;
+                foreach (index, argType; argTypes) {
+                    argRegs[index] = readExprMatch(argType);
+                    nArgRegs = index;
                 }
                 if (name == "add" || name == "sub" || name == "mul" || name == "div" || name == "mod") {
                     size_t op;
@@ -340,21 +343,21 @@ struct Parser {
                     ops ~= argRegs[0];
                     return outreg;
                 }
-                if (int* ptr = name in locals) {
+                if (uint* ptr = name in locals) {
                     size_t outreg = nregs++;
                     ops ~= opcalldyn;
                     ops ~= outreg;
                     ops ~= *ptr;
-                    ops ~= argRegs.length;
-                    ops ~= argRegs;
+                    ops ~= nArgRegs;
+                    ops ~= argRegs[0..nArgRegs];
                     return outreg;
-                } else if (int* ptr = name in funcs) {
+                } else if (uint* ptr = name in funcs) {
                     size_t outreg = nregs++;
                     ops ~= opcall;
                     ops ~= outreg;
                     ops ~= *ptr;
-                    ops ~= argRegs.length;
-                    ops ~= argRegs;
+                    ops ~= nArgRegs;
+                    ops ~= argRegs[0..nArgRegs];
                     return outreg;
                 } else if (name == "putchar") {
                     ops ~= opputchar;
@@ -390,9 +393,9 @@ struct Parser {
                     assert(false);
                 }
             } else {
-                if (int* ptr = name in locals) {
+                if (uint* ptr = name in locals) {
                     return cast(size_t) *ptr;
-                } else if (int* ptr = name in funcs) {
+                } else if (uint* ptr = name in funcs) {
                     size_t outreg = nregs++;
                     ops ~= [opint, outreg, cast(size_t) *ptr];
                     return outreg;

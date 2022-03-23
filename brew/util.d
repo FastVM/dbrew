@@ -14,6 +14,7 @@ extern(C) {
     int strcmp(const(char)* a, const(char)* b);
     int isprint(int chr);
     
+    void free(void* ptr);
     void* malloc(size_t size);
     void* realloc(void* ptr, size_t size);
 }
@@ -24,10 +25,11 @@ struct Array(Type) {
     uint alloc;
 
     this(size_t n)(Type[n] values) {
+        length = n;
         alloc = n;
         ptr = cast(Type*) malloc(Type.sizeof * alloc);
-        foreach (value; values) {
-            this ~= value;
+        foreach (index, value; values) {
+            ptr[index] = value;
         }
     }
 
@@ -141,6 +143,8 @@ struct Table(Type) {
             foreach (index; 0 .. 64) {
                 (*values)[index] = null;
             }
+            free(values);
+            values = null;
         }
     }
 
