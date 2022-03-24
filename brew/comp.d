@@ -47,7 +47,13 @@ struct Emitter {
             return size_t.max;
         case Form.Type.call:
             Array!char name = form.args[0].value.ident.repr;
-            if (name == "add" || name == "sub" || name == "mul" || name == "div" || name == "mod") {
+            if (name == "extern") {
+                size_t extno = form.args[1].value.num.value;
+                size_t reg = compile(form.args[2]);
+                size_t outreg = nregs++;
+                ops ~= [opcallext, outreg, extno, reg]; 
+                return outreg;
+            } else if (name == "add" || name == "sub" || name == "mul" || name == "div" || name == "mod") {
                 size_t[2] op;
                 switch (name.ptr[0..name.length]) {
                 case "add":
@@ -125,20 +131,17 @@ struct Emitter {
                 ops ~= kargs;
                 return kargs[0];
             } else if (name == "cons") {
-                size_t lhs = compile(form.args[0]);
-                size_t rhs = compile(form.args[1]);
                 size_t outreg = nregs++;
-                ops ~= [oparray, outreg, 2, lhs, rhs];
+                ops ~= [oparray, outreg, 2];
+                ops ~= kargs;
                 return outreg;
             } else if (name == "car") {
-                size_t pair = compile(form.args[0]);
                 size_t outreg = nregs++;
-                ops ~= [opgeti, outreg, pair, 0];
+                ops ~= [opgeti, outreg, kargs[0], 0];
                 return outreg;
             } else if (name == "cdr") {
-                size_t pair = compile(form.args[0]);
                 size_t outreg = nregs++;
-                ops ~= [opgeti, outreg, pair, 1];
+                ops ~= [opgeti, outreg, kargs[0], 1];
                 return outreg;
             } else if (name == "eq") {
                 size_t outreg = nregs++;

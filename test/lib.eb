@@ -1,0 +1,8 @@
+(extern f a) ?
+(cons x y) ?
+(car p) ?
+(cdr p) ?
+
+(debug x) extern 0 x
+
+(main) debug cons cons 4 cons 1 10 20
