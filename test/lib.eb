@@ -34,8 +34,7 @@
 (is-list x) if is-number x 0 1
 
 (num-to-str-nonzero n)
-if  eq 0 n
-    0
+and  eq 0 n
     cons 
         num-to-str-nonzero div 10 n 
         add '0 mod 10 n
@@ -58,18 +57,18 @@ let state cons 0 0
         window-should-close 
 
 # my code # 
+
 (render-frame arg)
-do  clear-background color-rgb 255 255 255
+do  clear-background color-rgb 0 0 0 
 do  draw-text
-        color-rgb arg arg arg
+        color-rgb 255 255 255 
         pos-xy 10 10
-        "boo"
-        64
+        num-to-str arg
+        48
     add 1 arg
 
 (main)
-let state cons 0 0
-do  open-window 600 600
+do  open-window 512 512
 do  loop do
         event-loop render-frame
         window-should-close

@@ -67,8 +67,7 @@ extern (C) Dynamic vm_run_ext(Memory* gc, size_t func, Dynamic arg) {
         Color color = gc.ecolor(gc.car(arg));
         arg = gc.cdr(arg);
         Dynamic p1 = gc.car(arg);
-        arg = gc.cdr(arg);
-        Dynamic p2 = gc.car(arg);
+        Dynamic p2 = gc.cdr(arg);
         int x1 = gc.car(p1).num;
         int y1 = gc.cdr(p1).num;
         int x2 = gc.car(p2).num;
