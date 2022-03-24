@@ -2,7 +2,75 @@
 (cons x y) ?
 (car p) ?
 (cdr p) ?
+(set-car p v) ?
+(set-cdr p v) ?
+
+(loop x) ?
+
+(add y x) ?
+(sub y x) ?
+(mul y x) ?
+(div y x) ?
+(mod y x) ?
+
+(lt y x) ?
+(eq y x) ?
+
+(putchar c) ?
 
 (debug x) extern 0 x
+(open-window x y) extern 1 cons x y
+(close-window) extern 2 0
+(window-should-close) extern 3 0
+(begin-drawing) extern 4 0
+(end-drawing) extern 5 0
+(clear-background color) extern 6 color
+(draw-text color pos str size) extern 7 cons color cons str cons pos size 
+(is-number x) extern 8 x
+(draw-rect color p1 p2) extern 9 cons color cons p1 p2 
 
-(main) debug cons cons 4 cons 1 10 20
+(color-rgb r g b) cons r cons g cons b 0
+(pos-xy x y) cons x y
+(is-list x) if is-number x 0 1
+
+(num-to-str-nonzero n)
+if  eq 0 n
+    0
+    cons 
+        num-to-str-nonzero div 10 n 
+        add '0 mod 10 n
+
+(num-to-str n)
+if eq 0 n
+    cons '0 0
+    num-to-str-nonzero n
+
+(with-drawing (draw-func state) state)
+do  begin-drawing
+let res draw-func state
+    do  end-drawing
+        res
+
+(event-loop (draw-func state))
+let state cons 0 0
+    loop
+    do  set-car state with-drawing draw-func car state
+        window-should-close 
+
+# my code # 
+(render-frame arg)
+do  clear-background color-rgb 255 255 255
+do  draw-text
+        color-rgb arg arg arg
+        pos-xy 10 10
+        "boo"
+        64
+    add 1 arg
+
+(main)
+let state cons 0 0
+do  open-window 600 600
+do  loop do
+        event-loop render-frame
+        window-should-close
+    0

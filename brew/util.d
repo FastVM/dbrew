@@ -13,9 +13,11 @@ extern (C) {
 
     int strcmp(const(char)* a, const(char)* b);
     int isprint(int chr);
+    int isalnum(int chr);
 
     void* malloc(size_t size);
     void* realloc(void* ptr, size_t size);
+    void free(void* ptr);
 }
 
 struct Array(Type) {

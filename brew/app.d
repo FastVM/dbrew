@@ -55,7 +55,7 @@ extern(C) int main(int argc, const(char*)* args) {
 			char[2048] buf;
 			size_t got = fread(buf.ptr, char.sizeof, 2048, fp);
 			foreach (chr; buf[0..got]) {
-				if (isprint(chr)) {
+				if (isprint(chr) || chr == '\n') {
 					src ~= chr;
 				}
 			}

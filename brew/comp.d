@@ -53,6 +53,17 @@ struct Emitter {
                 size_t outreg = nregs++;
                 ops ~= [opcallext, outreg, extno, reg]; 
                 return outreg;
+            } else if (name == "loop") {
+                ops ~= opjump;
+                size_t jcond = ops.length++;
+                size_t redo = ops.length;
+                size_t reg = compile(form.args[1]);
+                ops[jcond] = ops.length;
+                ops ~= [opbb, reg];
+                ops ~= redo;
+                size_t jfalse = ops.length++;
+                ops[jfalse] = ops.length;
+                return 0;
             } else if (name == "add" || name == "sub" || name == "mul" || name == "div" || name == "mod") {
                 size_t[2] op;
                 switch (name.ptr[0..name.length]) {
@@ -142,6 +153,14 @@ struct Emitter {
             } else if (name == "cdr") {
                 size_t outreg = nregs++;
                 ops ~= [opgeti, outreg, kargs[0], 1];
+                return outreg;
+            } else if (name == "set-car") {
+                size_t outreg = nregs++;
+                ops ~= [opseti, kargs[0], 0, kargs[1]];
+                return outreg;
+            } else if (name == "set-cdr") {
+                size_t outreg = nregs++;
+                ops ~= [opseti, kargs[0], 1, kargs[1]];
                 return outreg;
             } else if (name == "eq") {
                 size_t outreg = nregs++;
@@ -299,7 +318,15 @@ struct Emitter {
     }
 
     size_t compileType(String str) {
-        assert(false);
+        // assert(false);
+        size_t chrreg = nregs++;
+        size_t outreg = nregs++;
+        ops ~= [opint, outreg, 0];
+        foreach_reverse(index; 0..str.value.length) {
+            ops ~= [opint, chrreg, cast(size_t) str.value[index]];
+            ops ~= [oparray, outreg, 2, chrreg, outreg];
+        }
+        return outreg;
     }
 
     size_t compile(Node node) {

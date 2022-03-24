@@ -68,6 +68,7 @@ struct Parser {
 
     void raise(string msg) {
         printf("parse error(%zu:%zu) -> %.*s\n", state.line, state.col, cast(int) msg.length, msg.ptr);
+        printf("%.*s\n", state.src.length - state.head, state.src.ptr + state.head);
         assert(false);
     }
 

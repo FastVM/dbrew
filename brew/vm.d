@@ -109,12 +109,27 @@ struct Memory {
     Dynamic cdr(Dynamic pair) {
         return heap[pair.num + 1].val;
     }
+
+    void strconcat(Dynamic arg, ref Array!char ret) {
+        if (arg.type == Dynamic.Type.num) {
+            if (arg.num != 0) {
+                ret ~= cast(char) arg.num;
+            }
+        } else {
+            strconcat(car(arg), ret);
+            strconcat(cdr(arg), ret);
+        }
+    }
+
+    Array!char str(Dynamic arg) {
+        Array!char ret;
+        strconcat(arg, ret);
+        return ret;
+    }
 }
 
 extern (C) Dynamic vm_gc_new(Memory* gc, size_t count);
 extern (C) int vm_run(Config config, size_t nops, Opcode* ops, size_t nargs, const(char*)* args);
-
-
 
 bool runvm(Array!Opcode ops, int argc = 0, const(char*)* argv = null) {
     return 0 != vm_run(Config(200, 1000, 0), ops.length, ops.dup.ptr, argc, argv);
