@@ -53,12 +53,12 @@ struct Array(Type) {
         return ptr[index];
     }
 
-    void opOpAssign(string op : "~")(Type value) {
+    void opOpAssign(string op : "~", Arg)(Arg value) {
         if (length + 1 >= alloc) {
             alloc = (length + 1) * 2;
             ptr = cast(Type*) realloc(cast(void*) ptr, Type.sizeof * alloc);
         }
-        ptr[length] = value;
+        ptr[length] = cast(Type) value;
         length += 1;
     }
 
@@ -68,7 +68,7 @@ struct Array(Type) {
         }
     }
 
-    void opOpAssign(string op : "~", Arg)(Arg arg) {
+    void opOpAssign(string op : "~")(Array!Type arg) {
         foreach (val; arg) {
             this ~= val;
         }

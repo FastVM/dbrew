@@ -83,17 +83,8 @@ extern(C) int main(int argc, const(char*)* args) {
 		return 1;
 	}
 	if (run) {
-		args += 1;
-		int nargs = 0;
-		while (args[nargs] != null) {
-			nargs += 1;
-		}
-		runvm(res, nargs, args);
+		runvm(res);
 	} else {
-		Array!FileOpcode ops;
-		foreach (op; res) {
-			ops ~= cast(FileOpcode) op;
-		}
 		{
 			FILE* output = fopen("out.bc", "wb");
 			if (output is null) {
@@ -101,7 +92,7 @@ extern(C) int main(int argc, const(char*)* args) {
 				return 1;
 			}
 			scope(exit) fclose(output);
-			fwrite(ops.ptr, FileOpcode.sizeof, ops.length, output);
+			fwrite(res.ptr, Opcode.sizeof, res.length, output);
 		}
 	}
 	return 0;

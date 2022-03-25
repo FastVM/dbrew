@@ -266,12 +266,6 @@ struct Parser {
             assert(false);
         }
         switch (name.ptr[0..name.length]) {
-        case "or":
-            return form(Form.Type.or, [readExprMatch(type), readExprMatch(type)]).node;
-        case "and":
-            return form(Form.Type.and, [
-                    readExprMatch(type), readExprMatch(type)
-                ]).node;
         case "do":
             return form(Form.Type.do_, [
                     readExprMatch(type), readExprMatch(type)

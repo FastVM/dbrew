@@ -73,8 +73,6 @@ struct Node {
 /// call of function or operator call
 struct Form {
     enum Type {
-        or,
-        and,
         do_,
         if_,
         let,

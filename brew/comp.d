@@ -5,331 +5,189 @@ import brew.vm;
 import brew.util;
 
 struct Emitter {
-    size_t nregs;
-    Table!int funcs;
-    Table!int locals;
+    Opcode nregs;
+    Table!Opcode funcs;
+    Table!Opcode locals;
     Array!Opcode ops;
 
-    size_t compileType(Form form) {
+    Opcode compileType(Form form) {
         final switch (form.form) {
         case Form.Type.do_:
-            size_t last = 0;
+            Opcode last = 0;
             foreach (arg; form.args) {
                 last = compile(arg);
             }
             return last;
         case Form.Type.extern_:
-            return size_t.max;
+            return Opcode.max;
         case Form.Type.ret:
-            size_t reg = compile(form.args[0]);
+            Opcode reg = compile(form.args[0]);
             ops ~= [opret, reg];
-            return size_t.max;
+            return Opcode.max;
         case Form.Type.func:
             Array!char name = form.args[0].value.ident.repr;
             ops ~= opfunc;
-            size_t jover = ops.length++;
+            Opcode jover = cast(Opcode) ops.length++;
             ops ~= form.args.length - 2;
             ops ~= name.length;
             foreach (chr; name) {
                 ops ~= chr;
             }
-            size_t nregswhere = ops.length++;
-            funcs[name] = cast(int) ops.length;
+            Opcode nregswhere = cast(Opcode) ops.length++;
+            funcs[name] = cast(Opcode) ops.length;
             nregs = 1;
             locals = null;
             foreach (arg; form.args[1 .. $ - 1]) {
-                locals[arg.value.ident.repr] = cast(int) nregs;
+                locals[arg.value.ident.repr] = cast(Opcode) nregs;
                 nregs += 1;
             }
             compile(form.args[$ - 1]);
             ops[nregswhere] = nregs;
-            ops[jover] = ops.length;
-            return size_t.max;
+            ops[jover] = cast(Opcode) ops.length;
+            return Opcode.max;
         case Form.Type.call:
             Array!char name = form.args[0].value.ident.repr;
             if (name == "extern") {
-                size_t extno = form.args[1].value.num.value;
-                size_t reg = compile(form.args[2]);
-                size_t outreg = nregs++;
-                ops ~= [opcallext, outreg, extno, reg]; 
+                Opcode extno = cast(Opcode) form.args[1].value.num.value;
+                Opcode reg = compile(form.args[2]);
+                Opcode outreg = nregs++;
+                ops ~= [opxcall, outreg, extno, reg]; 
                 return outreg;
             } else if (name == "loop") {
                 ops ~= opjump;
-                size_t jcond = ops.length++;
-                size_t redo = ops.length;
-                size_t reg = compile(form.args[1]);
-                ops[jcond] = ops.length;
+                Opcode jcond = cast(Opcode) ops.length++;
+                Opcode redo = cast(Opcode) ops.length;
+                Opcode reg = compile(form.args[1]);
+                ops[jcond] = cast(Opcode) ops.length;
                 ops ~= [opbb, reg];
                 ops ~= redo;
-                size_t jfalse = ops.length++;
-                ops[jfalse] = ops.length;
+                Opcode jfalse = cast(Opcode) ops.length++;
+                ops[jfalse] = cast(Opcode) ops.length;
                 return 0;
-            } else if (name == "add" || name == "sub" || name == "mul" || name == "div" || name == "mod") {
-                size_t[2] op;
-                switch (name.ptr[0..name.length]) {
+            } else if (name == "add" || name == "sub" || name == "mul" || name == "div" || name == "mod" || name == "lt" || name == "eq") {
+                Opcode lhs = compile(form.args[1]);
+                Opcode rhs = compile(form.args[2]);
+                Opcode outreg = nregs++;
+                final switch (name.ptr[0..name.length]) {
                 case "add":
-                    op = [opadd, opaddi];
+                    ops ~= opadd;
                     break;
                 case "sub":
-                    op = [opsub, opsubi];
+                    ops ~= opsub;
                     break;
                 case "mul":
-                    op = [opmul, opmuli];
+                    ops ~= opmul;
                     break;
                 case "div":
-                    op = [opdiv, opdivi];
+                    ops ~= opdiv;
                     break;
                 case "mod":
-                    op = [opmod, opmodi];
+                    ops ~= opmod;
                     break;
-                default:
-                    assert(false);
+                case "eq":
+                    ops ~= opeq;
+                    break;
+                case "lt":
+                    ops ~= oplt;
+                    break;
                 }
-                if (form.args[1].type == Node.Type.num) {
-                    size_t lhs = form.args[1].value.num.value;
-                    size_t rhs = compile(form.args[2]);
-                    size_t outreg = nregs++;
-                    ops ~= op[1];
-                    ops ~= outreg;
-                    ops ~= rhs;
-                    ops ~= lhs;
-                    return outreg;
-                } else {
-                    size_t lhs = compile(form.args[1]);
-                    size_t rhs = compile(form.args[2]);
-                    size_t outreg = nregs++;
-                    ops ~= op[0];
-                    ops ~= outreg;
-                    ops ~= rhs;
-                    ops ~= lhs;
-                    return outreg;
-                }
+                ops ~= outreg;
+                ops ~= rhs;
+                ops ~= lhs;
+                return outreg;
             }
-            Array!size_t kargs;
+            Array!Opcode kargs;
             foreach (arg; form.args[1 .. $]) {
                 kargs ~= compile(arg);
             }
-            if (int* ptr = name in locals) {
-                size_t outreg = nregs++;
-                ops ~= [opcalldyn, outreg, cast(size_t) *ptr, kargs.length];
+            if (Opcode* ptr = name in locals) {
+                Opcode outreg = nregs++;
+                ops ~= [opdcall, outreg, cast(Opcode) *ptr, cast(Opcode) kargs.length];
                 ops ~= kargs;
                 return outreg;
-            } else if (int* ptr = name in funcs) {
-                size_t outreg = nregs++;
-                switch (kargs.length) {
-                case 0:
-                    ops ~= [opcall0, outreg, *ptr];
-                    break;
-                case 1:
-                    ops ~= [opcall1, outreg, *ptr, kargs[0]];
-                    break;
-                case 2:
-                    ops ~= [opcall2, outreg, *ptr, kargs[0], kargs[1]];
-                    break;
-                case 3:
-                    ops ~= [
-                        opcall3, outreg, *ptr, kargs[0], kargs[1], kargs[2]
-                    ];
-                    break;
-                default:
-                    ops ~= [opcall, outreg, *ptr, kargs.length];
-                    ops ~= kargs;
-                    break;
-                }
+            } else if (Opcode* ptr = name in funcs) {
+                Opcode outreg = nregs++;
+                ops ~= [opcall, outreg, *ptr, cast(Opcode) kargs.length];
+                ops ~= kargs;
                 return outreg;
             } else if (name == "putchar") {
                 ops ~= [opputchar];
                 ops ~= kargs;
                 return kargs[0];
             } else if (name == "cons") {
-                size_t outreg = nregs++;
-                ops ~= [oparray, outreg, 2];
+                Opcode outreg = nregs++;
+                ops ~= [opcons, outreg];
                 ops ~= kargs;
                 return outreg;
             } else if (name == "car") {
-                size_t outreg = nregs++;
-                ops ~= [opgeti, outreg, kargs[0], 0];
+                Opcode outreg = nregs++;
+                ops ~= [opcar, outreg, kargs[0]];
                 return outreg;
             } else if (name == "cdr") {
-                size_t outreg = nregs++;
-                ops ~= [opgeti, outreg, kargs[0], 1];
-                return outreg;
-            } else if (name == "set-car") {
-                size_t outreg = nregs++;
-                ops ~= [opseti, kargs[0], 0, kargs[1]];
-                return outreg;
-            } else if (name == "set-cdr") {
-                size_t outreg = nregs++;
-                ops ~= [opseti, kargs[0], 1, kargs[1]];
-                return outreg;
-            } else if (name == "eq") {
-                size_t outreg = nregs++;
-                assert(kargs.length == 2);
-                ops ~= [opbeq, kargs[1], kargs[0]];
-                size_t jfalse = ops.length++;
-                size_t jtrue = ops.length++;
-                ops[jfalse] = ops.length;
-                ops ~= [opint, outreg, 0];
-                ops ~= opjump;
-                size_t end = ops.length++;
-                ops[jtrue] = ops.length;
-                ops ~= [opint, outreg, 1];
-                ops[end] = ops.length;
-                return outreg;
-            } else if (name == "lt") {
-                size_t outreg = nregs++;
-                assert(kargs.length == 2);
-                ops ~= [opblt, kargs[1], kargs[0]];
-                size_t jfalse = ops.length++;
-                size_t jtrue = ops.length++;
-                ops[jfalse] = ops.length;
-                ops ~= [opint, outreg, 0];
-                ops ~= opjump;
-                size_t end = ops.length++;
-                ops[jtrue] = ops.length;
-                ops ~= [opint, outreg, 1];
-                ops[end] = ops.length;
+                Opcode outreg = nregs++;
+                ops ~= [opcdr, outreg, kargs[0]];
                 return outreg;
             }
             assert(false, "name not found");
         case Form.Type.let:
-            size_t where = compile(form.args[1]);
+            Opcode where = compile(form.args[1]);
             Array!char name = form.args[0].value.ident.repr;
-            locals[name] = cast(int) where;
-            size_t ret = compile(form.args[2]);
+            locals[name] = cast(Opcode) where;
+            Opcode ret = compile(form.args[2]);
             locals.remove(name);
             return ret;
-        case Form.Type.and:
-            size_t lhs = compile(form.args[0]);
-            size_t outreg = nregs++;
-            ops ~= [opbeqi, lhs, 0];
-            size_t jzero = ops.length++;
-            size_t jnonzero = ops.length++;
-            ops[jzero] = ops.length;
-            ops ~= [opint, outreg, 0];
-            ops ~= opjump;
-            size_t jout = ops.length++;
-            ops[jnonzero] = ops.length;
-            size_t rhs = compile(form.args[1]);
-            ops ~= [opreg, outreg, rhs];
-            ops[jout] = ops.length;
-            return outreg;
-        case Form.Type.or:
-            size_t lhs = compile(form.args[0]);
-            size_t outreg = nregs++;
-            ops ~= [opbeqi, lhs, 0];
-            size_t jzero = ops.length++;
-            size_t jnonzero = ops.length++;
-            ops[jnonzero] = ops.length;
-            ops ~= [opreg, outreg, lhs];
-            ops ~= opjump;
-            size_t jout = ops.length++;
-            ops[jzero] = ops.length;
-            size_t rhs = compile(form.args[1]);
-            ops ~= [opreg, outreg, rhs];
-            ops[jout] = ops.length;
-            return outreg;
         case Form.Type.if_:
-            size_t jtrue;
-            size_t jfalse;
-            if (form.args[0].type == Node.Type.form && form.args[0].value.form.form == Form
-                .Type.call) {
-                Array!char name = form.args[0].value.form.args[0].value.ident.repr;
-                Array!Node args = form.args[0].value.form.args[1 .. $];
-                switch (name.ptr[0..name.length]) {
-                case "eq":
-                    if (args[0].type == Node.Type.num) {
-                        size_t rhs = compile(args[1]);
-                        ops ~= [opbeqi, rhs, args[0].value.num.value];
-                        jfalse = ops.length++;
-                        jtrue = ops.length++;
-                    } else if (args[1].type == Node.Type.num) {
-                        size_t lhs = compile(args[0]);
-                        ops ~= [opbeqi, lhs, args[1].value.num.value];
-                        jfalse = ops.length++;
-                        jtrue = ops.length++;
-                    } else {
-                        size_t lhs = compile(args[0]);
-                        size_t rhs = compile(args[1]);
-                        ops ~= [opbeq, rhs, lhs];
-                        jfalse = ops.length++;
-                        jtrue = ops.length++;
-                    }
-                    break;
-                case "lt":
-                    if (args[0].type == Node.Type.num) {
-                        size_t rhs = compile(args[1]);
-                        ops ~= [opblti, rhs, args[0].value.num.value];
-                        jfalse = ops.length++;
-                        jtrue = ops.length++;
-                    } else if (args[1].type == Node.Type.num) {
-                        size_t lhs = compile(args[0]);
-                        ops ~= [opbltei, lhs, args[1].value.num.value];
-                        jtrue = ops.length++;
-                        jfalse = ops.length++;
-                    } else {
-                        size_t lhs = compile(args[0]);
-                        size_t rhs = compile(args[1]);
-                        ops ~= [opblt, rhs, lhs];
-                        jfalse = ops.length++;
-                        jtrue = ops.length++;
-                    }
-                    break;
-                default:
-                    size_t branch = compile(form.args[0]);
-                    ops ~= [opbb, branch];
-                    jfalse = ops.length++;
-                    jtrue = ops.length++;
-                    break;
-                }
-            }
-            size_t outreg = nregs++;
-            ops[jtrue] = ops.length;
-            size_t vtrue = compile(form.args[1]);
+            Opcode branch = compile(form.args[0]);
+            ops ~= [opbb, branch];
+            Opcode jfalse = cast(Opcode) ops.length++;
+            Opcode jtrue = cast(Opcode) ops.length++;
+            Opcode outreg = nregs++;
+            ops[jtrue] = cast(Opcode) ops.length;
+            Opcode vtrue = compile(form.args[1]);
             ops ~= [opreg, outreg, vtrue];
             ops ~= opjump;
-            size_t jend = ops.length++;
-            ops[jfalse] = ops.length;
-            size_t vfalse = compile(form.args[2]);
+            Opcode jend = cast(Opcode) ops.length++;
+            ops[jfalse] = cast(Opcode) ops.length;
+            Opcode vfalse = compile(form.args[2]);
             ops ~= [opreg, outreg, vfalse];
-            ops[jend] = ops.length;
+            ops[jend] = cast(Opcode) ops.length;
             return outreg;
         }
 
         assert(false, "bad form");
     }
 
-    size_t compileType(Ident id) {
-        if (int* ptr = id.repr in locals) {
-            return cast(size_t) *ptr;
-        } else if (int* ptr = id.repr in funcs) {
-            size_t outreg = nregs++;
-            ops ~= [opint, outreg, cast(size_t) *ptr];
+    Opcode compileType(Ident id) {
+        if (Opcode* ptr = id.repr in locals) {
+            return cast(Opcode) *ptr;
+        } else if (Opcode* ptr = id.repr in funcs) {
+            Opcode outreg = nregs++;
+            ops ~= [opint, outreg, cast(Opcode) *ptr];
             return outreg;
         } else {
             assert(false);
         }
     }
 
-    size_t compileType(Number num) {
-        size_t outreg = nregs++;
-        ops ~= [opint, outreg, num.value];
+    Opcode compileType(Number num) {
+        Opcode outreg = nregs++;
+        ops ~= [opint, outreg, cast(Opcode) num.value];
         return outreg;
     }
 
-    size_t compileType(String str) {
+    Opcode compileType(String str) {
         // assert(false);
-        size_t chrreg = nregs++;
-        size_t outreg = nregs++;
-        ops ~= [opint, outreg, 0];
+        Opcode chrreg = nregs++;
+        Opcode outreg = nregs++;
+        ops ~= [opint, outreg, cast(Opcode) 0];
         foreach_reverse(index; 0..str.value.length) {
-            ops ~= [opint, chrreg, cast(size_t) str.value[index]];
-            ops ~= [oparray, outreg, 2, chrreg, outreg];
+            ops ~= [opint, chrreg, cast(Opcode) str.value[index]];
+            ops ~= [opcons, outreg, chrreg, outreg];
         }
         return outreg;
     }
 
-    size_t compile(Node node) {
+    Opcode compile(Node node) {
         final switch (node.type) {
         case Node.Type.form:
             return compileType(node.value.form);
@@ -349,7 +207,7 @@ Array!Opcode compile(Array!Form forms) {
         emit.compile(arg.node);
     }
     assert("main" in emit.funcs);
-    emit.ops ~= [opcall, 0, emit.funcs["main"], 0];
+    emit.ops ~= [opcall, cast(Opcode) 0, cast(Opcode) emit.funcs["main"], cast(Opcode) 0];
     emit.ops ~= opexit;
     return emit.ops;
 }

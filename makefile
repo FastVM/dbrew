@@ -5,7 +5,7 @@ LOPT ?= $(OPT)
 COPT ?= $(OPT)
 DOPT ?= $(OPT)
 
-CFILES := minivm/vm/gc.c minivm/vm/vm.c
+CFILES := minivm/vm/vm.c
 RDFILES != find dray/source -name '*.d'
 SDFILES := brew/app.d brew/ast.d brew/comp.d brew/opt.d brew/parse.d brew/rt.d brew/vm.d brew/util.d
 
