@@ -16,7 +16,7 @@ DOBJS := $(DFILES:%.d=%.o)
 
 bin/dbrew: $(DOBJS) $(COBJS)
 	mkdir -p bin
-	$(CC) -lm libraylib.so.400 $(LOPT) $(DOBJS) $(COBJS) -o$(@) $(LFLAGS)
+	$(CC) $(LOPT) $(DOBJS) $(COBJS) -o$(@) $(LFLAGS)
 
 bin/dbrew.wasm: .dummy
 	$(MAKE) -B OPT='$(OPT)' CC='emcc' DFLAGS+='--march=wasm32' LFLAGS+='-s WASM=1 -s STANDALONE_WASM $(OPT)'
