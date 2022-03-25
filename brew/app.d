@@ -32,13 +32,16 @@ extern(C) int main(int argc, const(char*)* args) {
 		bool read = true;
 	}
 	while (args[1][0] == '-') {
-		if (!strcmp(args[1], "-r")) {
+		switch (args[1][1]) {
+		case 'r':
 			run = true;
 			args += 1;
-		} else if (!strcmp(args[1], "-i")) {
+			break;
+		case 'i':
 			read = false;
 			args += 1;
-		} else {
+			break;
+		default:
 			printf("unknown option: %s\n", args[1]);
 			return 1;
 		}
@@ -51,18 +54,21 @@ extern(C) int main(int argc, const(char*)* args) {
 			return 1;
 		}
 		scope(exit) fclose(fp);
-		while (!feof(fp)) {
+		while (true) {
 			char[2048] buf;
 			size_t got = fread(buf.ptr, char.sizeof, 2048, fp);
 			foreach (chr; buf[0..got]) {
-				if (isprint(chr) || chr == '\n') {
+				if (chr < cast(char) 128 && chr != '\0') {
 					src ~= chr;
 				}
+			}
+			if (got != buf.length) {
+				break;
 			}
 		}
 	} else {
 		while (args[1] !is null) {
-			if (!strcmp(args[1], "--")) {
+			if (args[1][0] == '-' && args[1][1] == '-' && args[1][2] == '\0') {
 				args += 1;
 				break;
 			}

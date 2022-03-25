@@ -2,6 +2,8 @@ module brew.vm;
 
 import brew.util;
 
+alias Opcode = ushort;
+
 enum Opcode opexit = 0;
 enum Opcode opreg = 1;
 enum Opcode opint = 2;
@@ -25,8 +27,6 @@ enum Opcode opcar = 19;
 enum Opcode opcdr = 20;
 enum Opcode opfree = 21;
 
-alias Opcode = ushort;
-
 struct Config {
     size_t gc_ents;
     size_t gc_init;
@@ -41,5 +41,5 @@ union Dynamic {
 extern(C) int vm_run(size_t nops, Opcode* ops);
 
 bool runvm(Array!Opcode ops) {
-    return 0 != vm_run(ops.length, ops.dup.ptr);
+    return 0 != vm_run(ops.length, ops.ptr);
 }

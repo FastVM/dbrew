@@ -3,17 +3,12 @@ module brew.util;
 extern (C) {
     struct FILE;
 
+    int printf(const(char)* format, ...);
+
     FILE* fopen(const(char)* path, const(char)* attr);
     int fclose(FILE* file);
-
-    int printf(const(char)* format, ...);
-    int feof(FILE* file);
     size_t fread(void* ptr, size_t size, size_t count, FILE* file);
     size_t fwrite(void* ptr, size_t size, size_t count, FILE* file);
-
-    int strcmp(const(char)* a, const(char)* b);
-    int isprint(int chr);
-    int isalnum(int chr);
 
     void* malloc(size_t size);
     void* realloc(void* ptr, size_t size);
