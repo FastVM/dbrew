@@ -102,7 +102,7 @@ struct Emitter {
             }
             if (Opcode* ptr = name in locals) {
                 Opcode outreg = nregs++;
-                ops ~= [opdcall, outreg, cast(Opcode) *ptr, cast(Opcode) kargs.length];
+                ops ~= [opdcall, outreg, *ptr, cast(Opcode) kargs.length];
                 ops ~= kargs;
                 return outreg;
             } else if (Opcode* ptr = name in funcs) {
@@ -159,13 +159,13 @@ struct Emitter {
 
     Opcode compileType(Ident id) {
         if (Opcode* ptr = id.repr in locals) {
-            return cast(Opcode) *ptr;
+            return *ptr;
         } else if (Opcode* ptr = id.repr in funcs) {
             Opcode outreg = nregs++;
-            ops ~= [opint, outreg, cast(Opcode) *ptr];
+            ops ~= [opint, outreg, *ptr];
             return outreg;
         } else {
-            assert(false);
+            assert(false, id.repr.ptr[0..id.repr.length]);
         }
     }
 
@@ -203,9 +203,12 @@ struct Emitter {
 
 Array!Opcode compile(Array!Form forms) {
     Emitter emit;
+    emit.ops ~= opjump;
+    size_t jover = emit.ops.length++;
     foreach (index, arg; forms) {
         emit.compile(arg.node);
     }
+    emit.ops[jover] = cast(Opcode) emit.ops.length;
     assert("main" in emit.funcs);
     emit.ops ~= [opcall, cast(Opcode) 0, cast(Opcode) emit.funcs["main"], cast(Opcode) 0];
     emit.ops ~= opexit;

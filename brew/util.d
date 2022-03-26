@@ -49,7 +49,7 @@ struct Array(Type) {
     }
 
     void opOpAssign(string op : "~", Arg)(Arg value) {
-        if (length + 1 >= alloc) {
+        if (length + 5 >= alloc) {
             alloc = (length + 1) * 2;
             ptr = cast(Type*) realloc(cast(void*) ptr, Type.sizeof * alloc);
         }
