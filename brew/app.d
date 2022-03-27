@@ -89,7 +89,7 @@ extern(C) int main(int argc, const(char*)* args) {
 		return 1;
 	}
 	if (run) {
-		runvm(res);
+		return runvm(res);
 	} else {
 		{
 			FILE* output = fopen("out.bc", "wb");
@@ -100,6 +100,6 @@ extern(C) int main(int argc, const(char*)* args) {
 			scope(exit) fclose(output);
 			fwrite(res.ptr, Opcode.sizeof, res.length, output);
 		}
+		return 0;
 	}
-	return 0;
 }

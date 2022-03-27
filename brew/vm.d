@@ -40,6 +40,6 @@ union Dynamic {
 
 extern(C) int vm_run(size_t nops, Opcode* ops);
 
-bool runvm(Array!Opcode ops) {
-    return 0 != vm_run(ops.length, ops.ptr);
+int runvm(Array!Opcode ops) {
+    return vm_run(ops.length, ops.ptr);
 }
