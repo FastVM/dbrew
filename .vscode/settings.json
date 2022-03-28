@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "*.dasc": "c"
+    },
+    "C_Cpp.errorSquiggles": "Disabled"
+}

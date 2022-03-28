@@ -59,4 +59,4 @@ add n state
 putnln n
 
 (main)
-putnln primes-upto mul 1000 1000 count-prime 0
+putnln primes-upto 1000 print-prime 0

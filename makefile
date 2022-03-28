@@ -5,30 +5,27 @@ LOPT ?= $(OPT)
 COPT ?= $(OPT)
 DOPT ?= $(OPT)
 
-CFILES := minivm/vm/vm.c
-RDFILES != find dray/source -name '*.d'
-SDFILES := brew/app.d brew/ast.d brew/comp.d brew/opt.d brew/parse.d brew/rt.d brew/vm.d brew/util.d
+DASCFILES := minivm/vm/jit.dasc
+CFILES := 
+DFILES := brew/app.d brew/ast.d brew/comp.d brew/opt.d brew/parse.d brew/rt.d brew/vm.d brew/util.d
 
-DFILES := $(RDFILES) $(SDFILES)
-
+DASCOBJS := $(DASCFILES:%.dasc=%.o)
 COBJS := $(CFILES:%.c=%.o)
 DOBJS := $(DFILES:%.d=%.o)
 
-bin/dbrew: $(DOBJS) $(COBJS)
+bin/dbrew: $(DASCOBJS) $(COBJS) $(DOBJS)
 	mkdir -p bin
-	$(CC) $(LOPT) $(DOBJS) $(COBJS) -o$(@) $(LFLAGS)
+	$(CC) $(LOPT) $(DASCOBJS) $(COBJS) $(DOBJS) -o$(@) $(LFLAGS)
 
-bin/dbrew.wasm: .dummy
-	$(MAKE) -B OPT='$(OPT)' CC='emcc' DFLAGS+='--march=wasm32' LFLAGS+='-s WASM=1 -s STANDALONE_WASM $(OPT)'
+minivm/minilua: minivm/luajit/src/host/minilua.c
+	$(CC) -o minivm/minilua -lm minivm/luajit/src/host/minilua.c
 
-objs: dobjs cobjs
-
-dobjs: $(DOBJS)
-
-cobjs: $(COBJS)
+$(DASCOBJS): $(@:%.o=%.dasc) minivm/minilua
+	minivm/minilua minivm/luajit/dynasm/dynasm.lua -o $(@:%.o=%.tmp.c) $(@:%.o=%.dasc) $(DASCFLAGS)
+	$(CC) $(COPT) -o$(@) -c $(@:%.o=%.tmp.c) $(CFLAGS)
 
 $(DOBJS): $(@:%.o=%.d)
-	$(DC) -Idray/source -betterC $(DOPT) -of$(@) -c $(@:%.o=%.d) $(DFLAGS)
+	$(DC) -betterC $(DOPT) -of$(@) -c $(@:%.o=%.d) $(DFLAGS)
 
 $(COBJS): $(@:%.o=%.c)
 	$(CC) $(COPT) -o$(@) -c $(@:%.o=%.c) $(CFLAGS)

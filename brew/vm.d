@@ -21,11 +21,7 @@ enum Opcode opbb = 13;
 enum Opcode opeq = 14;
 enum Opcode oplt = 15;
 enum Opcode opdcall = 16;
-enum Opcode opxcall = 17;
-enum Opcode opcons = 18;
-enum Opcode opcar = 19;
-enum Opcode opcdr = 20;
-enum Opcode opfree = 21;
+enum Opcode opintf = 17;
 
 struct Config {
     size_t gc_ents;

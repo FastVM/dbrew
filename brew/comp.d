@@ -29,10 +29,10 @@ struct Emitter {
             ops ~= opfunc;
             Opcode jover = cast(Opcode) ops.length++;
             ops ~= form.args.length - 2;
-            ops ~= name.length;
-            foreach (chr; name) {
-                ops ~= chr;
-            }
+            // ops ~= name.length;
+            // foreach (chr; name) {
+            //     ops ~= chr;
+            // }
             Opcode nregswhere = cast(Opcode) ops.length++;
             funcs[name] = cast(Opcode) ops.length;
             nregs = 1;
@@ -47,24 +47,7 @@ struct Emitter {
             return Opcode.max;
         case Form.Type.call:
             Array!char name = form.args[0].value.ident.repr;
-            if (name == "extern") {
-                Opcode extno = cast(Opcode) form.args[1].value.num.value;
-                Opcode reg = compile(form.args[2]);
-                Opcode outreg = nregs++;
-                ops ~= [opxcall, outreg, extno, reg]; 
-                return outreg;
-            } else if (name == "loop") {
-                ops ~= opjump;
-                Opcode jcond = cast(Opcode) ops.length++;
-                Opcode redo = cast(Opcode) ops.length;
-                Opcode reg = compile(form.args[1]);
-                ops[jcond] = cast(Opcode) ops.length;
-                ops ~= [opbb, reg];
-                ops ~= redo;
-                Opcode jfalse = cast(Opcode) ops.length++;
-                ops[jfalse] = cast(Opcode) ops.length;
-                return 0;
-            } else if (name == "add" || name == "sub" || name == "mul" || name == "div" || name == "mod" || name == "lt" || name == "eq") {
+            if (name == "add" || name == "sub" || name == "mul" || name == "div" || name == "mod" || name == "lt" || name == "eq") {
                 Opcode lhs = compile(form.args[1]);
                 Opcode rhs = compile(form.args[2]);
                 Opcode outreg = nregs++;
@@ -114,19 +97,6 @@ struct Emitter {
                 ops ~= [opputchar];
                 ops ~= kargs;
                 return kargs[0];
-            } else if (name == "cons") {
-                Opcode outreg = nregs++;
-                ops ~= [opcons, outreg];
-                ops ~= kargs;
-                return outreg;
-            } else if (name == "car") {
-                Opcode outreg = nregs++;
-                ops ~= [opcar, outreg, kargs[0]];
-                return outreg;
-            } else if (name == "cdr") {
-                Opcode outreg = nregs++;
-                ops ~= [opcdr, outreg, kargs[0]];
-                return outreg;
             }
             assert(false, "name not found");
         case Form.Type.let:
@@ -162,7 +132,7 @@ struct Emitter {
             return *ptr;
         } else if (Opcode* ptr = id.repr in funcs) {
             Opcode outreg = nregs++;
-            ops ~= [opint, outreg, *ptr];
+            ops ~= [opintf, outreg, *ptr];
             return outreg;
         } else {
             assert(false, id.repr.ptr[0..id.repr.length]);
@@ -176,15 +146,7 @@ struct Emitter {
     }
 
     Opcode compileType(String str) {
-        // assert(false);
-        Opcode chrreg = nregs++;
-        Opcode outreg = nregs++;
-        ops ~= [opint, outreg, cast(Opcode) 0];
-        foreach_reverse(index; 0..str.value.length) {
-            ops ~= [opint, chrreg, cast(Opcode) str.value[index]];
-            ops ~= [opcons, outreg, chrreg, outreg];
-        }
-        return outreg;
+        assert(false);
     }
 
     Opcode compile(Node node) {
@@ -203,13 +165,9 @@ struct Emitter {
 
 Array!Opcode compile(Array!Form forms) {
     Emitter emit;
-    emit.ops ~= opjump;
-    size_t jover = emit.ops.length++;
     foreach (index, arg; forms) {
         emit.compile(arg.node);
     }
-    emit.ops[jover] = cast(Opcode) emit.ops.length;
-    assert("main" in emit.funcs);
     emit.ops ~= [opcall, cast(Opcode) 0, cast(Opcode) emit.funcs["main"], cast(Opcode) 0];
     emit.ops ~= opexit;
     return emit.ops;
