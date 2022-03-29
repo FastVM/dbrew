@@ -76,6 +76,7 @@ struct Form {
         do_,
         if_,
         let,
+        for_,
         call,
         extern_,
         func,

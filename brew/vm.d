@@ -2,7 +2,7 @@ module brew.vm;
 
 import brew.util;
 
-alias Opcode = ushort;
+alias Opcode = uint;
 
 enum Opcode opexit = 0;
 enum Opcode opreg = 1;
@@ -22,6 +22,13 @@ enum Opcode opeq = 14;
 enum Opcode oplt = 15;
 enum Opcode opdcall = 16;
 enum Opcode opintf = 17;
+enum Opcode opbeq = 18;
+enum Opcode opblt = 19;
+enum Opcode opaddi = 20;
+enum Opcode opsubi = 21;
+enum Opcode optcall = 22;
+enum Opcode opreti = 23;
+enum Opcode opbeqi = 24;
 
 struct Config {
     size_t gc_ents;

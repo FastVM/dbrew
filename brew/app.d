@@ -41,6 +41,15 @@ extern(C) int main(int argc, const(char*)* args) {
 			read = false;
 			args += 1;
 			break;
+		case 'n':
+			args += 1;
+			count = 0;
+			for(size_t index = 0; args[1][index] != '\0'; index += 1) {
+				count *= 10;
+				count += args[1][index] - '0';
+			}
+			args += 1;
+			break;
 		default:
 			printf("unknown option: %s\n", args[1]);
 			return 1;
@@ -80,16 +89,17 @@ extern(C) int main(int argc, const(char*)* args) {
 			args += 1;
 		}
 	}
-	Array!Opcode res;
-	foreach (index; 0 .. count) {
-		res = optCompile(src);
-	}
+	Array!Opcode res = optCompile(src);
 	if (res.length == 0) {
 		printf("compiler failed to compile: empty buffer\n");
 		return 1;
 	}
 	if (run) {
-		return runvm(res);
+		foreach (i; 0..count) {
+			if (int err = runvm(res)) {
+				return err;
+			}
+		}
 	} else {
 		{
 			FILE* output = fopen("out.bc", "wb");
@@ -100,6 +110,6 @@ extern(C) int main(int argc, const(char*)* args) {
 			scope(exit) fclose(output);
 			fwrite(res.ptr, Opcode.sizeof, res.length, output);
 		}
-		return 0;
 	}
+	return 0;
 }

@@ -284,6 +284,13 @@ struct Parser {
             Node inscope = readExprMatch(type);
             defs.remove(id.repr);
             return form(Form.Type.let, [id.node, value, inscope]).node;
+        case "for":
+            Ident id = ident(readName);
+            Node value = readExprMatch(Binding.none);
+            defs[id.repr] = Binding(id.repr);
+            Node inscope = readExprMatch(type);
+            defs.remove(id.repr);
+            return form(Form.Type.for_, [id.node, value, inscope]).node;
         default:
             if (type.isFunc) {
                 return ident(name).node;
