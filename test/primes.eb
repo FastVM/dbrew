@@ -32,13 +32,11 @@ if  mod 2 x
     is-prime-from x 3
     0
 
+(loop n res)
+let tmp if is-prime n n 0
+    if  lt 1000000 n
+        loop add 2 n add tmp res
+        res
+
 (main)
-let max 2000000
-do  putnln 2
-for n 3
-do  if  is-prime n 
-        putnln n
-        0
-    if lt max n
-        add 2 n
-        0
+    putnln loop 3 2

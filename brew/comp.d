@@ -107,7 +107,7 @@ struct Emitter {
                     ops ~= lhs;
                     return outreg;
                 }
-            } else if (name == "mul" || name == "div" || name == "mod" || name == "lt" || name == "eq") {
+            } else if (name == "mul" || name == "div" || name == "mod" || name == "lt" || name == "eq"|| name == "above" || name == "equal") {
                 Opcode lhs = compile(form.args[1]);
                 Opcode rhs = compile(form.args[2]);
                 Opcode outreg = alloc;
@@ -128,9 +128,11 @@ struct Emitter {
                     ops ~= opmod;
                     break;
                 case "eq":
+                case "equal":
                     ops ~= opeq;
                     break;
                 case "lt":
+                case "above":
                     ops ~= oplt;
                     break;
                 }
@@ -157,8 +159,10 @@ struct Emitter {
                 ops ~= [opputchar];
                 ops ~= kargs;
                 return kargs[0];
+            } else {
+                printf("name not found: %.*s\n", name.length, name.ptr);
+                assert(false);
             }
-            assert(false, "name not found");
         case Form.Type.let:
             Opcode where = compile(form.args[1]);
             Array!char name = form.args[0].value.ident.repr;
@@ -167,23 +171,9 @@ struct Emitter {
             locals.remove(name);
             return ret;
         case Form.Type.for_:
-            Opcode where = compile(form.args[1]);
-            ops ~= [opbeqi, where, 0];
-            size_t jout1 = cast(Opcode) ops.length++;
-            size_t jnorm = cast(Opcode) ops.length++;
-            ops[jnorm] = cast(Opcode) ops.length;
-            Array!char name = form.args[0].value.ident.repr;
-            locals[name] = cast(Opcode) where;
-            Opcode lback = cast(Opcode) ops.length;
-            Opcode ret = compile(form.args[2]);
-            locals.remove(name);
-            ops ~= [opreg, where, ret];
-            ops ~= [opbeqi, ret, 0];
-            size_t jout2 = cast(Opcode) ops.length++;
-            ops ~= lback;
-            ops[jout1] = cast(Opcode) ops.length;
-            ops[jout2] = cast(Opcode) ops.length;
-            return where;
+        case Form.Type.and:
+        case Form.Type.or:
+            assert(false, "bad form");
         case Form.Type.if_:
             Opcode jfalse;
             Opcode jtrue;
@@ -192,6 +182,7 @@ struct Emitter {
                 Ident func = args[0].value.ident;
                 char[] name = func.repr.ptr[0..func.repr.length];
                 switch (name) {
+                case "equal":
                 case "eq":
                     Opcode lhs = compile(args[1]);
                     Opcode rhs = compile(args[2]);
@@ -199,7 +190,8 @@ struct Emitter {
                     jfalse = cast(Opcode) ops.length++;
                     jtrue = cast(Opcode) ops.length++;
                     break;
-                case "lt":
+                case "above":
+                case "lt":  
                     Opcode lhs = compile(args[1]);
                     Opcode rhs = compile(args[2]);
                     ops ~= [opblt, rhs, lhs];

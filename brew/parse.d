@@ -68,7 +68,7 @@ struct Parser {
 
     void raise(string msg) {
         printf("parse error(%zu:%zu) -> %.*s\n", state.line, state.col, cast(int) msg.length, msg.ptr);
-        printf("%.*s\n", state.src.length - state.head, state.src.ptr + state.head);
+        // printf("%.*s\n", state.src.length - state.head, state.src.ptr + state.head);
         assert(false);
     }
 
@@ -270,6 +270,14 @@ struct Parser {
             return form(Form.Type.do_, [
                     readExprMatch(type), readExprMatch(type)
                 ]).node;
+        case "or":
+            return form(Form.Type.do_, [
+                    readExprMatch(type), readExprMatch(type)
+                ]).node;
+        case "and":
+            return form(Form.Type.do_, [
+                    readExprMatch(type), readExprMatch(type)
+                ]).node;
         case "if":
             return form(Form.Type.if_,
                 [
@@ -277,13 +285,6 @@ struct Parser {
                     readExprMatch(type)
                 ]
             ).node;
-        case "let":
-            Ident id = ident(readName);
-            Node value = readExprMatch(Binding.none);
-            defs[id.repr] = Binding(id.repr);
-            Node inscope = readExprMatch(type);
-            defs.remove(id.repr);
-            return form(Form.Type.let, [id.node, value, inscope]).node;
         case "for":
             Ident id = ident(readName);
             Node value = readExprMatch(Binding.none);
@@ -291,6 +292,13 @@ struct Parser {
             Node inscope = readExprMatch(type);
             defs.remove(id.repr);
             return form(Form.Type.for_, [id.node, value, inscope]).node;
+        case "let":
+            Ident id = ident(readName);
+            Node value = readExprMatch(Binding.none);
+            defs[id.repr] = Binding(id.repr);
+            Node inscope = readExprMatch(type);
+            defs.remove(id.repr);
+            return form(Form.Type.let, [id.node, value, inscope]).node;
         default:
             if (type.isFunc) {
                 return ident(name).node;

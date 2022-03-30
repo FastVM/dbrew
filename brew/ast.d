@@ -76,11 +76,13 @@ struct Form {
         do_,
         if_,
         let,
-        for_,
         call,
         extern_,
         func,
         ret,
+        or,
+        and,
+        for_,
     }
 
     Type form;

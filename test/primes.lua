@@ -18,13 +18,14 @@ local function is_prime(x)
 end
 
 local function main()
-    local max = 2000000
-    print(2)
+    local max = 1000000
+    local res = 2
     for n=3, max, 2 do
         if is_prime(n) then
-            print(n)
+            res = res + n
         end
     end
+    print(res)
 end
 
 main()
