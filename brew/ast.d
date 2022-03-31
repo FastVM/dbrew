@@ -82,7 +82,6 @@ struct Form {
         ret,
         or,
         and,
-        for_,
     }
 
     Type form;

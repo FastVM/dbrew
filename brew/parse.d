@@ -226,7 +226,7 @@ struct Parser {
             }
             if (!state.done && state.first == '\'') {
                 state.skip;
-            }
+            }   
             return num(cast(size_t) chr).node;
         }
         bool startsOpenParen = false;
@@ -285,13 +285,6 @@ struct Parser {
                     readExprMatch(type)
                 ]
             ).node;
-        case "for":
-            Ident id = ident(readName);
-            Node value = readExprMatch(Binding.none);
-            defs[id.repr] = Binding(id.repr);
-            Node inscope = readExprMatch(type);
-            defs.remove(id.repr);
-            return form(Form.Type.for_, [id.node, value, inscope]).node;
         case "let":
             Ident id = ident(readName);
             Node value = readExprMatch(Binding.none);

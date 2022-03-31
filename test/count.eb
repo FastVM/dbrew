@@ -20,7 +20,5 @@ if lt n 9
     putd n
 
 (main)
-for x 1
-    do  putn x
-    do  putchar '\n
-        add 1 x
+do  putd 0
+    putchar '\n

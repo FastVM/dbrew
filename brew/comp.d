@@ -11,49 +11,51 @@ struct Emitter {
     char[] fname;
 
     Opcode nregs;
-    Array!Opcode freeRegs;
+    Opcode nregsMax;
 
     Opcode alloc() {
-        if (freeRegs.length > 0) {
-            Opcode ret = freeRegs[$-1];
-            freeRegs.length--;
-            return ret;
-        } else {
-            return nregs++;
+        Opcode ret = nregs++;
+        if (ret > nregsMax) {
+            nregsMax = ret;
         }
+        return ret;
     }
 
-    Opcode compileType(Form form) {
+    void compileType(Form form, Opcode outreg) {
         final switch (form.form) {
         case Form.Type.do_:
-            Opcode last = 0;
             foreach (arg; form.args) {
-                last = compile(arg);
+                compile(arg, outreg);
             }
-            return last;
+            break;
         case Form.Type.extern_:
-            return Opcode.max;
+            break;
         case Form.Type.ret:
             if (form.args[0].type == Node.Type.form && form.args[0].value.form.form == Form.Type.call) {
                 Form cform = form.args[0].value.form;
                 Array!char name = cform.args[0].value.ident.repr;
                 if (name.ptr[0..name.length] == fname) {
                     Array!Opcode kargs;
-                    foreach (arg; cform.args.ptr[1 .. cform.args.length]) {
-                        kargs ~= compile(arg);
+                    Opcode treg = outreg;
+                    foreach (num, arg; cform.args.ptr[1 .. cform.args.length]) {
+                        Opcode creg = compileMaybe(arg, treg);
+                        if (creg == treg) {
+                            treg = alloc;
+                        }
+                        kargs ~= creg;
                     }
                     ops ~= [optcall, cast(Opcode) kargs.length];
                     ops ~= kargs;
-                    return Opcode.max;
+                    break;
                 }
             }
             if (form.args[0].type == Node.Type.num) {
                 ops ~= [opreti, cast(Opcode) form.args[0].value.num.value];
             } else {
-                Opcode reg = compile(form.args[0]);
-                ops ~= [opret, reg];
+                Opcode ret = compileMaybe(form.args[0], 0);
+                ops ~= [opret, ret];
             }
-            return Opcode.max;
+            break;
         case Form.Type.func:
             Array!char name = form.args[0].value.ident.repr;
             fname = name.ptr[0..name.length];
@@ -65,19 +67,18 @@ struct Emitter {
             nregs = 1;
             locals = null;
             foreach (arg; form.args.ptr[1 .. form.args.length - 1]) {
-                locals[arg.value.ident.repr] = cast(Opcode) nregs;
-                nregs += 1;
+                locals[arg.value.ident.repr] = alloc;
             }
-            compile(form.args[$ - 1]);
-            ops[nregswhere] = nregs;
+            nregsMax = nregs;
+            compileMaybe(form.args[$ - 1], 0);
+            ops[nregswhere] = nregsMax;
             ops[jover] = cast(Opcode) ops.length;
-            return Opcode.max;
+            break;
         case Form.Type.call:
             Array!char name = form.args[0].value.ident.repr;
             if (name == "add" || name == "sub" ) {
                 if (form.args[1].type == Node.Type.num) {
-                    Opcode outreg = alloc;
-                    Opcode rhs = compile(form.args[2]);
+                    Opcode rhs = compileMaybe(form.args[2], outreg);
                     final switch (name.ptr[0..name.length]) {
                     case "add":
                         ops ~= opaddi;
@@ -89,11 +90,10 @@ struct Emitter {
                     ops ~= outreg;
                     ops ~= rhs;
                     ops ~= cast(Opcode) form.args[1].value.num.value;
-                    return outreg;
+                    break;
                 } else {
-                    Opcode lhs = compile(form.args[1]);
-                    Opcode rhs = compile(form.args[2]);
-                    Opcode outreg = alloc;
+                    Opcode lhs = compileMaybe(form.args[1], alloc);
+                    Opcode rhs = compileMaybe(form.args[2], outreg);
                     final switch (name.ptr[0..name.length]) {
                     case "add":
                         ops ~= opadd;
@@ -105,12 +105,11 @@ struct Emitter {
                     ops ~= outreg;
                     ops ~= rhs;
                     ops ~= lhs;
-                    return outreg;
+                    break;
                 }
-            } else if (name == "mul" || name == "div" || name == "mod" || name == "lt" || name == "eq"|| name == "above" || name == "equal") {
-                Opcode lhs = compile(form.args[1]);
-                Opcode rhs = compile(form.args[2]);
-                Opcode outreg = alloc;
+            } else if (name == "mul" || name == "div" || name == "mod") {
+                Opcode lhs = compileMaybe(form.args[1], alloc);
+                Opcode rhs = compileMaybe(form.args[2], outreg);
                 final switch (name.ptr[0..name.length]) {
                 case "add":
                     ops ~= opadd;
@@ -127,50 +126,43 @@ struct Emitter {
                 case "mod":
                     ops ~= opmod;
                     break;
-                case "eq":
-                case "equal":
-                    ops ~= opeq;
-                    break;
-                case "lt":
-                case "above":
-                    ops ~= oplt;
-                    break;
                 }
                 ops ~= outreg;
                 ops ~= rhs;
                 ops ~= lhs;
-                return outreg;
+                break;
             }
             Array!Opcode kargs;
-            foreach (arg; form.args.ptr[1 .. form.args.length]) {
-                kargs ~= compile(arg);
+            Opcode treg = outreg;
+            foreach (num, arg; form.args.ptr[1 .. form.args.length]) {
+                Opcode creg = compileMaybe(arg, treg);
+                if (creg == treg) {
+                    treg = alloc;
+                }
+                kargs ~= creg;
             }
             if (Opcode* ptr = name in locals) {
-                Opcode outreg = alloc;
                 ops ~= [opdcall, outreg, *ptr, cast(Opcode) kargs.length];
                 ops ~= kargs;
-                return outreg;
+                break;
             } else if (Opcode* ptr = name in funcs) {
-                Opcode outreg = alloc;
                 ops ~= [opcall, outreg, *ptr, cast(Opcode) kargs.length];
                 ops ~= kargs;
-                return outreg;
+                break;
             } else if (name == "putchar") {
                 ops ~= [opputchar];
                 ops ~= kargs;
-                return kargs[0];
+                break;
             } else {
                 printf("name not found: %.*s\n", name.length, name.ptr);
                 assert(false);
             }
         case Form.Type.let:
-            Opcode where = compile(form.args[1]);
-            Array!char name = form.args[0].value.ident.repr;
-            locals[name] = cast(Opcode) where;
-            Opcode ret = compile(form.args[2]);
-            locals.remove(name);
-            return ret;
-        case Form.Type.for_:
+            Opcode varreg = compileMaybe(form.args[1], alloc);
+            locals[form.args[0].value.ident.repr] = varreg;
+            compile(form.args[2], outreg);
+            locals.remove(form.args[0].value.ident.repr);
+            break;
         case Form.Type.and:
         case Form.Type.or:
             assert(false, "bad form");
@@ -184,16 +176,16 @@ struct Emitter {
                 switch (name) {
                 case "equal":
                 case "eq":
-                    Opcode lhs = compile(args[1]);
-                    Opcode rhs = compile(args[2]);
+                    Opcode lhs = compileMaybe(args[1], outreg);
+                    Opcode rhs = compileMaybe(args[2], alloc);
                     ops ~= [opbeq, rhs, lhs];
                     jfalse = cast(Opcode) ops.length++;
                     jtrue = cast(Opcode) ops.length++;
                     break;
                 case "above":
                 case "lt":  
-                    Opcode lhs = compile(args[1]);
-                    Opcode rhs = compile(args[2]);
+                    Opcode lhs = compileMaybe(args[1], outreg);
+                    Opcode rhs = compileMaybe(args[2], alloc);
                     ops ~= [opblt, rhs, lhs];
                     jfalse = cast(Opcode) ops.length++;
                     jtrue = cast(Opcode) ops.length++;
@@ -203,59 +195,72 @@ struct Emitter {
                 }
             }
             if (jtrue == 0 && jfalse == 0) {
-                Opcode branch = compile(form.args[0]);
-                ops ~= [opbb, branch];
+                Opcode condreg = compileMaybe(form.args[0], outreg);
+                ops ~= [opbb, condreg];
                 jfalse = cast(Opcode) ops.length++;
                 jtrue = cast(Opcode) ops.length++;
             }
-            Opcode outreg = alloc;
             ops[jtrue] = cast(Opcode) ops.length;
-            Opcode vtrue = compile(form.args[1]);
-            ops ~= [opreg, outreg, vtrue];
+            compile(form.args[1], outreg);
             ops ~= opjump;
             Opcode jend = cast(Opcode) ops.length++;
             ops[jfalse] = cast(Opcode) ops.length;
-            Opcode vfalse = compile(form.args[2]); 
-            ops ~= [opreg, outreg, vfalse];
+            compile(form.args[2], outreg); 
             ops[jend] = cast(Opcode) ops.length;
-            return outreg;
+            break;
         }
-
-        assert(false, "bad form");
     }
 
-    Opcode compileType(Ident id) {
+    void compileType(Ident id, Opcode outreg) {
         if (Opcode* ptr = id.repr in locals) {
-            return *ptr;
+            ops ~= [opreg, outreg, *ptr];
         } else if (Opcode* ptr = id.repr in funcs) {
-            Opcode outreg = alloc;
             ops ~= [opintf, outreg, *ptr];
-            return outreg;
         } else {
             assert(false, id.repr.ptr[0..id.repr.length]);
         }
     }
 
-    Opcode compileType(Number num) {
-        Opcode outreg = alloc;
+    void compileType(Number num, Opcode outreg) {
         ops ~= [opint, outreg, cast(Opcode) num.value];
-        return outreg;
     }
 
-    Opcode compileType(String str) {
+    void compileType(String str, Opcode outreg) {
         assert(false);
     }
 
-    Opcode compile(Node node) {
+    Opcode compileMaybe(Node node, Opcode outreg) {
+        if (node.type == Node.Type.ident) {
+            if (Opcode* ptr = node.value.ident.repr in locals) {
+                return *ptr;
+            }
+        }
+        if (node.type == Node.Type.form) {
+            Form form = node.value.form;
+            if (form.form == Form.Type.let) {
+                Opcode varreg = compileMaybe(form.args[1], alloc);
+                locals[form.args[0].value.ident.repr] = varreg;
+                Opcode ret = compileMaybe(form.args[2], outreg);
+                locals.remove(form.args[0].value.ident.repr);
+                return ret;
+            }
+        }
+        compile(node, outreg);
+        return outreg;
+    }
+
+    void compile(Node node, Opcode outreg) {
+        Opcode nregsOld = nregs;
+        scope(exit) nregs = nregsOld;
         final switch (node.type) {
         case Node.Type.form:
-            return compileType(node.value.form);
+            return compileType(node.value.form, outreg);
         case Node.Type.ident:
-            return compileType(node.value.ident);
+            return compileType(node.value.ident, outreg);
         case Node.Type.num:
-            return compileType(node.value.num);
+            return compileType(node.value.num, outreg);
         case Node.Type.str:
-            return compileType(node.value.str);
+            return compileType(node.value.str, outreg);
         }
     }
 }
@@ -263,7 +268,7 @@ struct Emitter {
 Array!Opcode compile(Array!Form forms) {
     Emitter emit;
     foreach (index, arg; forms) {
-        emit.compile(arg.node);
+        emit.compileMaybe(arg.node, 0);
     }
     emit.ops ~= [opcall, cast(Opcode) 0, cast(Opcode) emit.funcs["main"], cast(Opcode) 0];
     emit.ops ~= opexit;
