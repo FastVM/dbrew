@@ -1,7 +1,7 @@
 
 int printf(const char *fmt, ...);
 
-int fib(n) {
+int fib(int n) {
     if (n < 2) {
         return n;
     } else {
@@ -10,6 +10,6 @@ int fib(n) {
 }
 
 int main() {
-    printf("%i\n", fib(40));
+    printf("%i\n", fib(45));
     return 0;
 }

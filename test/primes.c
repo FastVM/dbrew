@@ -2,19 +2,16 @@
 #include <stddef.h>
 #include <stdio.h>
 
-size_t is_prime_from(size_t x, size_t n) {
-    if (x < n * n) {
-        return 1;
-    } else if (x % n != 0) {
-        return is_prime_from(x, n+2);
-    } else {
-        return 0;
-    }
-}
+typedef long number_t;
 
-size_t is_prime(size_t x) {
+number_t is_prime(number_t x) {
     if (x % 2 != 0) {
-        return is_prime_from(x, 3);
+        for (number_t n = 3; n * n < x; n+=2) {
+            if (x % n == 0) {
+                return 0;
+            }
+        }
+        return 1;
     } else {
         return 0;
     }
@@ -22,9 +19,9 @@ size_t is_prime(size_t x) {
 
 
 int main() {
-    size_t max = 1000000;
-    size_t res = 2;
-    for (size_t n = 3; n < max; n += 2) {
+    number_t max = 10000000;
+    number_t res = 2;
+    for (number_t n = 3; n < max; n += 2) {
         if (is_prime(n)) {
             res += n;
         }

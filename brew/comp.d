@@ -76,7 +76,7 @@ struct Emitter {
             break;
         case Form.Type.call:
             Array!char name = form.args[0].value.ident.repr;
-            if (name == "add" || name == "sub" ) {
+            if (name == "add" || name == "sub" || name == "mul" || name == "div" || name == "mod") {
                 if (form.args[1].type == Node.Type.num) {
                     Opcode rhs = compileMaybe(form.args[2], outreg);
                     final switch (name.ptr[0..name.length]) {
@@ -85,6 +85,15 @@ struct Emitter {
                         break;
                     case "sub":
                         ops ~= opsubi;
+                        break;
+                    case "mul":
+                        ops ~= opmuli;
+                        break;
+                    case "div":
+                        ops ~= opdivi;
+                        break;
+                    case "mod":
+                        ops ~= opmodi;
                         break;
                     }
                     ops ~= outreg;
@@ -101,36 +110,21 @@ struct Emitter {
                     case "sub":
                         ops ~= opsub;
                         break;
+                    case "mul":
+                        ops ~= opmul;
+                        break;
+                    case "div":
+                        ops ~= opdiv;
+                        break;
+                    case "mod":
+                        ops ~= opmod;
+                        break;
                     }
                     ops ~= outreg;
                     ops ~= rhs;
                     ops ~= lhs;
                     break;
                 }
-            } else if (name == "mul" || name == "div" || name == "mod") {
-                Opcode lhs = compileMaybe(form.args[1], alloc);
-                Opcode rhs = compileMaybe(form.args[2], outreg);
-                final switch (name.ptr[0..name.length]) {
-                case "add":
-                    ops ~= opadd;
-                    break;
-                case "sub":
-                    ops ~= opsub;
-                    break;
-                case "mul":
-                    ops ~= opmul;
-                    break;
-                case "div":
-                    ops ~= opdiv;
-                    break;
-                case "mod":
-                    ops ~= opmod;
-                    break;
-                }
-                ops ~= outreg;
-                ops ~= rhs;
-                ops ~= lhs;
-                break;
             }
             Array!Opcode kargs;
             Opcode treg = outreg;
@@ -176,19 +170,38 @@ struct Emitter {
                 switch (name) {
                 case "equal":
                 case "eq":
-                    Opcode lhs = compileMaybe(args[1], outreg);
-                    Opcode rhs = compileMaybe(args[2], alloc);
-                    ops ~= [opbeq, rhs, lhs];
-                    jfalse = cast(Opcode) ops.length++;
-                    jtrue = cast(Opcode) ops.length++;
+                    if (args[1].type == Node.Type.num) {
+                        Opcode rhs = compileMaybe(args[2], outreg);
+                        ops ~= [opbeqi, rhs, cast(Opcode) args[1].value.num.value];
+                        jfalse = cast(Opcode) ops.length++;
+                        jtrue = cast(Opcode) ops.length++;
+                    } else if (args[2].type == Node.Type.num) {
+                        Opcode lhs = compileMaybe(args[1], outreg);
+                        ops ~= [opbeqi, lhs, cast(Opcode) args[2].value.num.value];
+                        jfalse = cast(Opcode) ops.length++;
+                        jtrue = cast(Opcode) ops.length++;
+                    } else {
+                        Opcode lhs = compileMaybe(args[1], outreg);
+                        Opcode rhs = compileMaybe(args[2], alloc);
+                        ops ~= [opbeq, rhs, lhs];
+                        jfalse = cast(Opcode) ops.length++;
+                        jtrue = cast(Opcode) ops.length++;
+                    }
                     break;
                 case "above":
                 case "lt":  
-                    Opcode lhs = compileMaybe(args[1], outreg);
-                    Opcode rhs = compileMaybe(args[2], alloc);
-                    ops ~= [opblt, rhs, lhs];
-                    jfalse = cast(Opcode) ops.length++;
-                    jtrue = cast(Opcode) ops.length++;
+                    if (args[1].type == Node.Type.num) {
+                        Opcode rhs = compileMaybe(args[2], outreg);
+                        ops ~= [opblti, rhs, cast(Opcode) args[1].value.num.value];
+                        jfalse = cast(Opcode) ops.length++;
+                        jtrue = cast(Opcode) ops.length++;
+                    } else {
+                        Opcode lhs = compileMaybe(args[1], outreg);
+                        Opcode rhs = compileMaybe(args[2], alloc);
+                        ops ~= [opblt, rhs, lhs];
+                        jfalse = cast(Opcode) ops.length++;
+                        jtrue = cast(Opcode) ops.length++;
+                    }
                     break;
                 default:
                     break;
