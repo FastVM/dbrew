@@ -1,3 +1,4 @@
-[submodule "ebrew"]
-	path = ebrew
-	url = https://github.com/shawsumma/ebrew
+[submodule "minivm"]
+	path = minivm
+	url = https://github.com/fastvm/minivm
+	branch = jit

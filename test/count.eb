@@ -20,11 +20,5 @@ if lt n 9
     putd n
 
 (main)
-let x 7
-let y 3
-do  putn mul y x
-do  putchar '\n
-do  putn div y x
-do  putchar '\n
-do  putn mod y x
+do  putd 0
     putchar '\n

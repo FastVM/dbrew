@@ -1,269 +1,289 @@
 module brew.comp;
 
-import std.stdio;
-import std.conv;
 import brew.ast;
+import brew.vm;
+import brew.util;
 
-enum ebrewPre = `
-typedef __SIZE_TYPE__ value_t;
+struct Emitter {
+    Table!Opcode funcs;
+    Table!Opcode locals;
+    Array!Opcode ops;
+    char[] fname;
 
-static value_t eb_add(value_t x, value_t y) {
-    return y + x;
-}
+    Opcode nregs;
+    Opcode nregsMax;
 
-static value_t eb_cmpa(value_t x, value_t y) {
-    return y > x;
-}
-
-static value_t eb_cmpe(value_t x, value_t y) {
-    return y == x;
-}
-
-static value_t eb_not(value_t x) {
-    return !x;
-}
-
-static value_t eb_sub(value_t x, value_t y) {
-    return y - x;
-}
-
-static value_t eb_mul(value_t x, value_t y) {
-    return y * x;
-}
-
-static value_t eb_div(value_t x, value_t y) {
-    return y / x;
-}
-
-static value_t eb_mod(value_t x, value_t y) {
-    return y % x;
-}
-
-static value_t eb_shl(value_t x, value_t y) {
-    return y << x;
-}
-
-static value_t eb_peek(value_t x) {
-    return *(unsigned char*)x;
-}
-
-static value_t eb_load(value_t x) {
-    return *(value_t*)x;
-}
-
-static value_t eb_poke(value_t x, value_t y) {
-    *(unsigned char*)x = y;
-    return y;
-}
-
-static value_t eb_store(value_t x, value_t y) {
-    *(value_t*)x = y;
-    return x;
-}
-
-static value_t eb_neg(value_t x) {
-    return -x;
-}
-
-static value_t __attribute__((naked)) eb_linux(value_t rdi, value_t rsi, value_t rdx, value_t rcx, value_t r8, value_t r9, value_t rax) {
-    __asm__(
-        "mov 8(%rsp),%rax\n"
-        "syscall\n"
-        "ret\n"
-    );
-}
-
-`;
-
-string compileFunc(Node node)
-{
-    return node.compile;
-}
-
-string compileType(Form form)
-{
-    final switch (form.form)
-    {
-    case Form.Type.program:
-        string ret = ebrewPre;
-        foreach (arg; form.args)
-        {
-            ret ~= arg.compile;
+    Opcode alloc() {
+        Opcode ret = nregs++;
+        if (ret > nregsMax) {
+            nregsMax = ret;
         }
         return ret;
-    case Form.Type.do_:
-        return "({" ~ form.args[0].compile ~ ";" ~ form.args[1].compile ~ ";})";
-    case Form.Type.extern_:
-        string ret;
-        ret ~= "value_t ";
-        ret ~= form.args[0].compile;
-        ret ~= "(";
-        foreach (index, arg; form.args[1 .. $])
-        {
-            if (index != 0)
-            {
-                ret ~= ",";
+    }
+
+    void compileType(Form form, Opcode outreg) {
+        final switch (form.form) {
+        case Form.Type.do_:
+            foreach (arg; form.args) {
+                compile(arg, outreg);
             }
-            ret ~= arg.compile;
-
-        }
-        ret ~= ");";
-        return ret;
-    case Form.Type.tvalue:
-        string ret;
-        ret ~= "value_t ";
-        ret ~= form.args[0].compile;
-        return ret;
-    case Form.Type.tfunc:
-        string ret;
-        ret ~= "value_t(*";
-        ret ~= form.args[0].compile;
-        ret ~= ")(";
-        if (form.args.length == 1)
-        {
-            ret ~= "void";
-        }
-        else
-        {
-            foreach (index, arg; form.args[1..$])
-            {
-                if (index != 0)
-                {
-                    ret ~= ",";
+            break;
+        case Form.Type.extern_:
+            break;
+        case Form.Type.ret:
+            if (form.args[0].type == Node.Type.form && form.args[0].value.form.form == Form.Type.call) {
+                Form cform = form.args[0].value.form;
+                Array!char name = cform.args[0].value.ident.repr;
+                if (name.ptr[0..name.length] == fname) {
+                    Array!Opcode kargs;
+                    Opcode treg = outreg;
+                    foreach (num, arg; cform.args.ptr[1 .. cform.args.length]) {
+                        Opcode creg = compileMaybe(arg, treg);
+                        if (creg == treg) {
+                            treg = alloc;
+                        }
+                        kargs ~= creg;
+                    }
+                    ops ~= [optcall, cast(Opcode) kargs.length];
+                    ops ~= kargs;
+                    break;
                 }
-                ret ~= arg.compile; 
+            }
+            if (form.args[0].type == Node.Type.num) {
+                ops ~= [opreti, cast(Opcode) form.args[0].value.num.value];
+            } else {
+                Opcode ret = compileMaybe(form.args[0], 0);
+                ops ~= [opret, ret];
+            }
+            break;
+        case Form.Type.func:
+            Array!char name = form.args[0].value.ident.repr;
+            fname = name.ptr[0..name.length];
+            ops ~= opfunc;
+            Opcode jover = cast(Opcode) ops.length++;
+            ops ~= form.args.length - 2;
+            Opcode nregswhere = cast(Opcode) ops.length++;
+            funcs[name] = cast(Opcode) ops.length;
+            nregs = 1;
+            locals = null;
+            foreach (arg; form.args.ptr[1 .. form.args.length - 1]) {
+                locals[arg.value.ident.repr] = alloc;
+            }
+            nregsMax = nregs;
+            compileMaybe(form.args[$ - 1], 0);
+            ops[nregswhere] = nregsMax;
+            ops[jover] = cast(Opcode) ops.length;
+            break;
+        case Form.Type.call:
+            Array!char name = form.args[0].value.ident.repr;
+            if (name == "add" || name == "sub" || name == "mul" || name == "div" || name == "mod") {
+                if (form.args[1].type == Node.Type.num) {
+                    Opcode rhs = compileMaybe(form.args[2], outreg);
+                    final switch (name.ptr[0..name.length]) {
+                    case "add":
+                        ops ~= opaddi;
+                        break;
+                    case "sub":
+                        ops ~= opsubi;
+                        break;
+                    case "mul":
+                        ops ~= opmuli;
+                        break;
+                    case "div":
+                        ops ~= opdivi;
+                        break;
+                    case "mod":
+                        ops ~= opmodi;
+                        break;
+                    }
+                    ops ~= outreg;
+                    ops ~= rhs;
+                    ops ~= cast(Opcode) form.args[1].value.num.value;
+                    break;
+                } else {
+                    Opcode lhs = compileMaybe(form.args[1], alloc);
+                    Opcode rhs = compileMaybe(form.args[2], outreg);
+                    final switch (name.ptr[0..name.length]) {
+                    case "add":
+                        ops ~= opadd;
+                        break;
+                    case "sub":
+                        ops ~= opsub;
+                        break;
+                    case "mul":
+                        ops ~= opmul;
+                        break;
+                    case "div":
+                        ops ~= opdiv;
+                        break;
+                    case "mod":
+                        ops ~= opmod;
+                        break;
+                    }
+                    ops ~= outreg;
+                    ops ~= rhs;
+                    ops ~= lhs;
+                    break;
+                }
+            }
+            Array!Opcode kargs;
+            Opcode treg = outreg;
+            foreach (num, arg; form.args.ptr[1 .. form.args.length]) {
+                Opcode creg = compileMaybe(arg, treg);
+                if (creg == treg) {
+                    treg = alloc;
+                }
+                kargs ~= creg;
+            }
+            if (Opcode* ptr = name in locals) {
+                ops ~= [opdcall, outreg, *ptr, cast(Opcode) kargs.length];
+                ops ~= kargs;
+                break;
+            } else if (Opcode* ptr = name in funcs) {
+                ops ~= [opcall, outreg, *ptr, cast(Opcode) kargs.length];
+                ops ~= kargs;
+                break;
+            } else if (name == "putchar") {
+                ops ~= [opputchar];
+                ops ~= kargs;
+                break;
+            } else {
+                printf("name not found: %.*s\n", name.length, name.ptr);
+                assert(false);
+            }
+        case Form.Type.let:
+            Opcode varreg = compileMaybe(form.args[1], alloc);
+            locals[form.args[0].value.ident.repr] = varreg;
+            compile(form.args[2], outreg);
+            locals.remove(form.args[0].value.ident.repr);
+            break;
+        case Form.Type.and:
+        case Form.Type.or:
+            assert(false, "bad form");
+        case Form.Type.if_:
+            Opcode jfalse;
+            Opcode jtrue;
+            if (form.args[0].type == Node.Type.form && form.args[0].value.form.form == Form.Type.call) {
+                Array!Node args = form.args[0].value.form.args;
+                Ident func = args[0].value.ident;
+                char[] name = func.repr.ptr[0..func.repr.length];
+                switch (name) {
+                case "equal":
+                case "eq":
+                    if (args[1].type == Node.Type.num) {
+                        Opcode rhs = compileMaybe(args[2], outreg);
+                        ops ~= [opbeqi, rhs, cast(Opcode) args[1].value.num.value];
+                        jfalse = cast(Opcode) ops.length++;
+                        jtrue = cast(Opcode) ops.length++;
+                    } else if (args[2].type == Node.Type.num) {
+                        Opcode lhs = compileMaybe(args[1], outreg);
+                        ops ~= [opbeqi, lhs, cast(Opcode) args[2].value.num.value];
+                        jfalse = cast(Opcode) ops.length++;
+                        jtrue = cast(Opcode) ops.length++;
+                    } else {
+                        Opcode lhs = compileMaybe(args[1], outreg);
+                        Opcode rhs = compileMaybe(args[2], alloc);
+                        ops ~= [opbeq, rhs, lhs];
+                        jfalse = cast(Opcode) ops.length++;
+                        jtrue = cast(Opcode) ops.length++;
+                    }
+                    break;
+                case "above":
+                case "lt":  
+                    if (args[1].type == Node.Type.num) {
+                        Opcode rhs = compileMaybe(args[2], outreg);
+                        ops ~= [opblti, rhs, cast(Opcode) args[1].value.num.value];
+                        jfalse = cast(Opcode) ops.length++;
+                        jtrue = cast(Opcode) ops.length++;
+                    } else {
+                        Opcode lhs = compileMaybe(args[1], outreg);
+                        Opcode rhs = compileMaybe(args[2], alloc);
+                        ops ~= [opblt, rhs, lhs];
+                        jfalse = cast(Opcode) ops.length++;
+                        jtrue = cast(Opcode) ops.length++;
+                    }
+                    break;
+                default:
+                    break;
+                }
+            }
+            if (jtrue == 0 && jfalse == 0) {
+                Opcode condreg = compileMaybe(form.args[0], outreg);
+                ops ~= [opbb, condreg];
+                jfalse = cast(Opcode) ops.length++;
+                jtrue = cast(Opcode) ops.length++;
+            }
+            ops[jtrue] = cast(Opcode) ops.length;
+            compile(form.args[1], outreg);
+            ops ~= opjump;
+            Opcode jend = cast(Opcode) ops.length++;
+            ops[jfalse] = cast(Opcode) ops.length;
+            compile(form.args[2], outreg); 
+            ops[jend] = cast(Opcode) ops.length;
+            break;
+        }
+    }
+
+    void compileType(Ident id, Opcode outreg) {
+        if (Opcode* ptr = id.repr in locals) {
+            ops ~= [opreg, outreg, *ptr];
+        } else if (Opcode* ptr = id.repr in funcs) {
+            ops ~= [opintf, outreg, *ptr];
+        } else {
+            assert(false, id.repr.ptr[0..id.repr.length]);
+        }
+    }
+
+    void compileType(Number num, Opcode outreg) {
+        ops ~= [opint, outreg, cast(Opcode) num.value];
+    }
+
+    void compileType(String str, Opcode outreg) {
+        assert(false);
+    }
+
+    Opcode compileMaybe(Node node, Opcode outreg) {
+        if (node.type == Node.Type.ident) {
+            if (Opcode* ptr = node.value.ident.repr in locals) {
+                return *ptr;
             }
         }
-        ret ~= ")";
-        return ret;
-    case Form.Type.ret:
-        string ret;
-        ret ~= "return ";
-        ret ~= form.args[0].compile;
-        ret ~= ";";
-        return ret;
-    case Form.Type.func:
-        string name = form.args[0].compile;
-        string ret;
-        ret ~= "value_t ";
-        ret ~= name;
-        ret ~= "(";
-        foreach (index, arg; form.args[1 .. $ - 1])
-        {
-            if (index != 0)
-            {
-                ret ~= ",";
+        if (node.type == Node.Type.form) {
+            Form form = node.value.form;
+            if (form.form == Form.Type.let) {
+                Opcode varreg = compileMaybe(form.args[1], alloc);
+                locals[form.args[0].value.ident.repr] = varreg;
+                Opcode ret = compileMaybe(form.args[2], outreg);
+                locals.remove(form.args[0].value.ident.repr);
+                return ret;
             }
-            ret ~= arg.compile;
+        }
+        compile(node, outreg);
+        return outreg;
+    }
 
+    void compile(Node node, Opcode outreg) {
+        Opcode nregsOld = nregs;
+        scope(exit) nregs = nregsOld;
+        final switch (node.type) {
+        case Node.Type.form:
+            return compileType(node.value.form, outreg);
+        case Node.Type.ident:
+            return compileType(node.value.ident, outreg);
+        case Node.Type.num:
+            return compileType(node.value.num, outreg);
+        case Node.Type.str:
+            return compileType(node.value.str, outreg);
         }
-        ret ~= ")";
-        ret ~= "{";
-        ret ~= form.args[$ - 1].compile;
-        if (ret[$-1] != ';')
-        {
-            ret ~= ";";
-        }
-        ret ~= "}";
-        return ret;
-    case Form.Type.call:
-        string ret;
-        ret ~= form.args[0].compileFunc;
-        ret ~= "(";
-        foreach (index, arg; form.args[1 .. $])
-        {
-            if (index != 0)
-            {
-                ret ~= ",";
-            }
-            ret ~= arg.compile;
-        }
-        ret ~= ")";
-        return ret;
-    case Form.Type.let:
-        return "({value_t " ~ form.args[0].compile ~ "=" ~ form.args[1].compile ~ ";" ~ form
-            .args[2].compile ~ ";})";
-    case Form.Type.and:
-        return "({value_t a=" ~ form.args[0].compile ~ ";a?" ~ form.args[1].compile ~ ":a;})";
-    case Form.Type.or:
-        return "({value_t a=" ~ form.args[0].compile ~ ";a?a:" ~ form.args[1].compile ~ ";})";
-    case Form.Type.for_:
-        string name = form.args[0].compile;
-        string ret;
-        ret ~= "({value_t ";
-        ret ~= name;
-        ret ~= "=";
-        ret ~= form.args[1].compile;
-        ret ~= ";for(;;){value_t t=";
-        ret ~= form.args[2].compile;
-        ret ~= ";if(t){";
-        ret ~= name;
-        ret ~= "=t;}else{break;}}";
-        ret ~= name;
-        ret ~= ";})";
-        return ret;
-    case Form.Type.if_:
-        return "((" ~ form.args[0].compile ~ ")?(" ~ form.args[1].compile ~ "):(" ~ form
-            .args[2].compile ~ "))";
-    case Form.Type.addr:
-        return "((value_t)&" ~ form.args[0].compile ~ ")";
     }
 }
 
-string compileType(Ident id)
-{
-    if (id.repr == "_start")
-    {
-        return "_start";
+Array!Opcode compile(Array!Form forms) {
+    Emitter emit;
+    foreach (index, arg; forms) {
+        emit.compileMaybe(arg.node, 0);
     }
-    string ret;
-    ret ~= "eb_";
-    foreach (chr; id.repr)
-    {
-        if (chr == '-')
-        {
-            ret ~= "_DASH_";
-        }
-        else
-        {
-            ret ~= chr;
-        }
-    }
-    return ret;
-}
-
-string compileType(Number num)
-{
-    return num.value.to!string ~ "U";
-}
-
-string compileType(String str)
-{
-    string ret;
-    ret ~= "(value_t)(void*)";
-    ret ~= '"';
-    foreach (chr; str.value)
-    {
-        ret ~= "\\x";
-        ubyte n = chr.to!ubyte;
-        ret ~= to!string(n / 16, 16);
-        ret ~= to!string(n % 16, 16);
-    }
-    ret ~= '"';
-    return ret;
-}
-
-string compile(Node node)
-{
-    final switch (node.type)
-    {
-    case Node.Type.form:
-        return compileType(node.value.form);
-    case Node.Type.ident:
-        return compileType(node.value.ident);
-    case Node.Type.num:
-        return compileType(node.value.num);
-    case Node.Type.str:
-        return compileType(node.value.str);
-    }
+    emit.ops ~= [opcall, cast(Opcode) 0, cast(Opcode) emit.funcs["main"], cast(Opcode) 0];
+    emit.ops ~= opexit;
+    return emit.ops;
 }

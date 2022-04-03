@@ -1,0 +1,35 @@
+
+# we are making a prime number program #
+
+(add y x) ?
+(sub y x) ?
+(mul y x) ?
+(div y x) ?
+(mod y x) ?
+
+(eq y x) ?
+(lt y x) ?
+
+(putchar c) ?
+
+(print-num n)
+if  lt n 9
+    do  print-num div 10 n
+        putchar add '0 mod 10 n
+    putchar add '0 mod 10 n
+
+(println-num n)
+do  print-num n
+    putchar '\n
+
+(iter-num low high (func state val) init)
+let res func init low
+    if  lt high low
+        iter-num add 1 low high func low
+        res
+
+(iter-println-num state n)
+println-num n
+
+(main)
+iter-num 0 1000000 iter-println-num 0

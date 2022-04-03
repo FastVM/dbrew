@@ -1,47 +1,40 @@
 module brew.ast;
+import brew.util;
 
-import std.algorithm;
-import std.conv;
-import std.meta;
-
-Form form(Args...)(Args args)
-{
-    return Form(args);
+Form form(Form.Type type, Array!Node args) {
+    return Form(type, args);
 }
 
-Ident ident(string name)
-{
+Form form(size_t n)(Form.Type type, Node[n] args) {
+    return Form(type, args);
+}
+
+Ident ident(Array!char name) {
     return Ident(name);
 }
 
-Number num(size_t num)
-{
+Number num(size_t num) {
     return Number(num);
 }
 
-String str(string str)
-{
+String str(Array!char str) {
     return String(str);
 }
 
-Node node(Type)(Type arg)
-{
+Node node(Type)(Type arg) {
     return Node(arg);
 }
 
 /// any node, not valid in the ast
-struct Node
-{
-    enum Type
-    {
+struct Node {
+    enum Type {
         form,
         ident,
         num,
         str,
     }
 
-    union Value
-    {
+    union Value {
         Form form;
         Ident ident;
         Number num;
@@ -51,150 +44,83 @@ struct Node
     Value value;
     Type type;
 
-    this(Node other)
-    {
+    this(Node other) {
         value = other.value;
         type = other.type;
     }
 
-    this(Form form)
-    {
+    this(Form form) {
         value.form = form;
         type = Type.form;
     }
 
-    this(Ident ident)
-    {
+    this(Ident ident) {
         value.ident = ident;
         type = Type.ident;
     }
 
-    this(Number num)
-    {
+    this(Number num) {
         value.num = num;
         type = Type.num;
     }
 
-    this(String str)
-    {
+    this(String str) {
         value.str = str;
         type = Type.str;
-    }
-
-    string toString()
-    {
-        final switch (type)
-        {
-        case Type.form:
-            return value.form.to!string;
-        case Type.ident:
-            return value.ident.to!string;
-        case Type.num:
-            return value.num.to!string;
-        case Type.str:
-            return value.str.to!string;
-        }
     }
 }
 
 /// call of function or operator call
-struct Form
-{
-    enum Type
-    {
-        addr,
-        or,
-        and,
+struct Form {
+    enum Type {
         do_,
         if_,
         let,
-        for_,
         call,
         extern_,
         func,
-        program,
         ret,
-        tfunc,
-        tvalue,
+        or,
+        and,
     }
+
     Type form;
-    Node[] args;
+    Array!Node args;
 
-    this(Args...)(Type f, Args as)
-    {
-        static foreach (a; as)
-        {
-            static if (is(typeof(a) == Node[]))
-            {
-                args ~= a;
-            }
-            else
-            {
-                args ~= node(a);
-            }
-        }
+    this(Type f, Array!Node a) {
         form = f;
+        args = a;
     }
 
-    string toString()
-    {
-        char[] ret;
-        ret ~= "(";
-        ret ~= form;
-        foreach (i, v; args)
-        {
-            ret ~= " ";
-            ret ~= v.to!string;
-        }
-        ret ~= ")";
-        return cast(string) ret;
+    this(size_t n)(Type f, Node[n] a) {
+        form = f;
+        args = Array!Node(a);
     }
 }
 
 /// ident or number, detects at runtime
-struct Ident
-{
-    string repr;
+struct Ident {
+    Array!char repr;
 
-    this(string s)
-    {
+    this(Array!char s) {
         repr = s;
-    }
-
-    string toString()
-    {
-        return repr;
     }
 }
 
 /// number value literal
-struct Number
-{
+struct Number {
     size_t value;
 
-    this(T)(T v)
-    {
+    this(T)(T v) {
         value = v;
-    }
-
-    string toString()
-    {
-        return "[" ~ value.to!string ~ "]";
     }
 }
 
 /// string value literal
-struct String
-{
-    string value;
+struct String {
+    Array!char value;
 
-    this(T)(T v)
-    {
+    this(Array!char v) {
         value = v;
-    }
-
-    string toString()
-    {
-        return "[" ~ value.to!string ~ "]";
     }
 }

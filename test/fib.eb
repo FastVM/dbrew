@@ -14,17 +14,18 @@
 putchar add '0 mod 10 n
 
 (putn n)
-if lt n 9
+if  lt n 9
     do  putn div 10 n
         putd n
     putd n
 
+(fib n)
+if  lt 2 n
+    n
+    add fib sub 1 n
+        fib sub 2 n
+
 (main)
-let x 7
-let y 3
-do  putn mul y x
+do  putn fib 45
 do  putchar '\n
-do  putn div y x
-do  putchar '\n
-do  putn mod y x
-    putchar '\n
+    0

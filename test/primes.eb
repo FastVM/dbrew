@@ -1,0 +1,42 @@
+
+(putchar c) ? 
+(sub y x) ?
+(add y x) ?
+(mul y x) ?
+(div y x) ?
+(mod y x) ?
+(lt y x) ?
+
+(putd n)
+putchar add '0 mod 10 n
+
+(putn n)
+if  lt n 9
+    do  putn div 10 n
+        putd n
+    putd n
+
+(putnln n)
+do  putn n
+    putchar '\n
+
+(is-prime-from x n)
+if  lt mul n n x
+    1
+    if  mod n x
+        is-prime-from x add 2 n
+        0
+
+(is-prime x)
+if  mod 2 x
+    is-prime-from x 3
+    0
+
+(loop n res)
+let tmp if is-prime n n 0
+    if  lt 10000000 n
+        loop add 2 n add tmp res
+        res
+
+(main)
+    putnln loop 3 2

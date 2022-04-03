@@ -14,3 +14,9 @@ dbrew-test-*
 *.obj
 *.lst
 bin
+*.bc
+out.*
+fastcomp
+wasi-libc
+perf.data
+perf.data.old

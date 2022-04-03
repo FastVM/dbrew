@@ -1,36 +1,34 @@
 
-OPT ?= -Os
+OPT ?= -O
 
-CFLAGS += -nostdlib
-CFLAGS += -fno-unwind-tables -fno-asynchronous-unwind-tables
-CFLAGS += -fno-exceptions
-CFLAGS += -fno-stack-protector 
-CFLAGS += -fomit-frame-pointer
-
-COPT ?= $(OPT)
 LOPT ?= $(OPT)
+COPT ?= $(OPT)
 DOPT ?= $(OPT)
 
-CFLAGS += $(COPT)
-LFLAGS += $(LOPT)
+DASCFILES := minivm/vm/jit.dasc
+CFILES := 
+DFILES := brew/app.d brew/ast.d brew/comp.d brew/opt.d brew/parse.d brew/rt.d brew/vm.d brew/util.d
 
-bin/ebrew: bin/ebrew.o
-	$(LD) -o $@ -s $^ $(LFLAGS)
+DASCOBJS := $(DASCFILES:%.dasc=%.o)
+COBJS := $(CFILES:%.c=%.o)
+DOBJS := $(DFILES:%.d=%.o)
 
-bin/ebrew.o: bin/ebrew.s
-	$(AS) -o $@ -c $^
+bin/dbrew: $(DASCOBJS) $(COBJS) $(DOBJS)
+	mkdir -p bin
+	$(CC) $(LOPT) $(DASCOBJS) $(COBJS) $(DOBJS) -o$(@) $(LFLAGS)
 
-bin/ebrew.s: bin/ebrew.c
-	$(CC) -o $@ -S $^ $(CFLAGS)
+minivm/minilua: minivm/luajit/src/host/minilua.c
+	$(CC) -o minivm/minilua -lm minivm/luajit/src/host/minilua.c
 
-bin/ebrew.c: bin/dbrew bin/all.eb
-	./bin/dbrew bin/all.eb $@
+$(DASCOBJS): $(@:%.o=%.dasc) minivm/minilua
+	minivm/minilua minivm/luajit/dynasm/dynasm.lua -o $(@:%.o=%.tmp.c) $(@:%.o=%.dasc) $(DASCFLAGS)
+	$(CC) $(COPT) -o$(@) -c $(@:%.o=%.tmp.c) $(CFLAGS)
 
-# bin/all.eb: ebrew/ebrew.eb
-# 	cat $^ > $@
+$(DOBJS): $(@:%.o=%.d)
+	$(DC) -betterC $(DOPT) -of$(@) -c $(@:%.o=%.d) $(DFLAGS)
 
-bin/dbrew: .dummy
-	$(DC) $(DOPT) -i brew/app.d -ofbin/dbrew 
+$(COBJS): $(@:%.o=%.c)
+	$(CC) $(COPT) -o$(@) -c $(@:%.o=%.c) $(CFLAGS)
 
 bin: .dummy
 	mkdir -p $@

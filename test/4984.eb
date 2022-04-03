@@ -1,0 +1,16 @@
+(add x y) ?
+
+(putchar c) ?
+
+(inc x) add 1 x
+
+(zero) 0
+
+(newline) putchar inc inc inc inc inc inc inc inc inc inc zero
+
+(main) 
+do  putchar inc inc inc inc '0
+do  putchar inc inc inc inc inc inc inc inc inc '0
+do  putchar inc inc inc inc inc inc inc inc '0
+do  putchar inc inc inc inc '0
+    newline
