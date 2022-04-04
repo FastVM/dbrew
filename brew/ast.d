@@ -6,19 +6,15 @@ Form form(Form.Type type, Array!Node args) {
 }
 
 Form form(size_t n)(Form.Type type, Node[n] args) {
-    return Form(type, args);
+    return Form(type, Array!Node.alloc(args));
 }
 
-Ident ident(Array!char name) {
+Ident ident(char[] name) {
     return Ident(name);
 }
 
 Number num(size_t num) {
     return Number(num);
-}
-
-String str(Array!char str) {
-    return String(str);
 }
 
 Node node(Type)(Type arg) {
@@ -31,14 +27,12 @@ struct Node {
         form,
         ident,
         num,
-        str,
     }
 
     union Value {
         Form form;
         Ident ident;
         Number num;
-        String str;
     }
 
     Value value;
@@ -64,9 +58,15 @@ struct Node {
         type = Type.num;
     }
 
-    this(String str) {
-        value.str = str;
-        type = Type.str;
+    void dealloc() {
+        final switch (type) {
+        case Type.form:
+            value.form.dealloc();
+            break;
+        case Type.ident:
+        case Type.num:
+            break;
+        }
     }
 }
 
@@ -96,13 +96,20 @@ struct Form {
         form = f;
         args = Array!Node(a);
     }
+
+    void dealloc() {
+        foreach (arg; args) {
+            arg.dealloc();
+        }
+        args.dealloc();
+    }
 }
 
 /// ident or number, detects at runtime
 struct Ident {
-    Array!char repr;
+    char[] repr;
 
-    this(Array!char s) {
+    this(char[] s) {
         repr = s;
     }
 }
@@ -112,15 +119,6 @@ struct Number {
     size_t value;
 
     this(T)(T v) {
-        value = v;
-    }
-}
-
-/// string value literal
-struct String {
-    Array!char value;
-
-    this(Array!char v) {
         value = v;
     }
 }

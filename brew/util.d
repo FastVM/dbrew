@@ -18,40 +18,57 @@ extern (C) {
 struct Array(Type) {
     Type* ptr;
     uint length;
-    uint alloc;
+    uint nalloc;
 
-    this(size_t n)(Type[n] values) {
-        alloc = n;
-        ptr = cast(Type*) malloc(Type.sizeof * alloc);
+    this(size_t n)(Type[n] values) @disable {
+        nalloc = n;
+        ptr = cast(Type*) malloc(Type.sizeof * n);
         foreach (value; values) {
             this ~= value;
         }
     }
 
-    Array!Type dup() {
+    static Array!Type alloc(size_t n)(Type[n] values) {
         Array!Type ret;
-        foreach (value; ptr[0 .. length]) {
-            ret ~= value;
+        ret.nalloc = n;
+        ret.ptr = cast(Type*) malloc(Type.sizeof * n);
+        foreach (index, value; values) {
+            ret.ptr[index] = value;
         }
+        ret.length = n;
         return ret;
     }
 
-    Array!Type opSlice(size_t start, size_t end) {
-        Array!Type ret;
-        foreach (value; ptr[start .. end]) {
-            ret ~= value;
-        }
-        return ret;
+    void dealloc() {
+        free(cast(void*) ptr);
+        length = 0;
+        nalloc = 0;
     }
+
+    // Array!Type dup() {
+    //     Array!Type ret;
+    //     foreach (value; ptr[0 .. length]) {
+    //         ret ~= value;
+    //     }
+    //     return ret;
+    // }
+
+    // Array!Type opSlice(size_t start, size_t end) {
+    //     Array!Type ret;
+    //     foreach (value; ptr[start .. end]) {
+    //         ret ~= value;
+    //     }
+    //     return ret;
+    // }
 
     ref Type opIndex(size_t index) {
         return ptr[index];
     }
 
     void opOpAssign(string op : "~", Arg)(Arg value) {
-        if (length + 5 >= alloc) {
-            alloc = (length + 1) * 2;
-            ptr = cast(Type*) realloc(cast(void*) ptr, Type.sizeof * alloc);
+        if (length + 5 >= nalloc) {
+            nalloc = (length + 1) * 2;
+            ptr = cast(Type*) realloc(cast(void*) ptr, Type.sizeof * nalloc);
         }
         ptr[length] = cast(Type) value;
         length += 1;
@@ -127,10 +144,20 @@ ubyte charno(char c) {
     assert(false);
 }
 
-struct Table(Type) {
+struct Table(Type, string dealloc1=``) {
     Table!Type[64]* values;
     Type value;
     bool has;
+
+    void dealloc() {
+        if (values !is null) {
+            foreach (value; *values) {
+                value.dealloc();
+            }
+            free(cast(void*) values);
+        }
+        mixin(dealloc1);
+    }
 
     void opAssign(typeof(null) n) {
         has = false;

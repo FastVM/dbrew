@@ -33,9 +33,10 @@ struct Emitter {
         case Form.Type.ret:
             if (form.args[0].type == Node.Type.form && form.args[0].value.form.form == Form.Type.call) {
                 Form cform = form.args[0].value.form;
-                Array!char name = cform.args[0].value.ident.repr;
+                char[] name = cform.args[0].value.ident.repr;
                 if (name.ptr[0..name.length] == fname) {
                     Array!Opcode kargs;
+                    scope(exit) kargs.dealloc();
                     Opcode treg = outreg;
                     foreach (num, arg; cform.args.ptr[1 .. cform.args.length]) {
                         Opcode creg = compileMaybe(arg, treg);
@@ -57,7 +58,7 @@ struct Emitter {
             }
             break;
         case Form.Type.func:
-            Array!char name = form.args[0].value.ident.repr;
+            char[] name = form.args[0].value.ident.repr;
             fname = name.ptr[0..name.length];
             ops ~= opfunc;
             Opcode jover = cast(Opcode) ops.length++;
@@ -75,7 +76,7 @@ struct Emitter {
             ops[jover] = cast(Opcode) ops.length;
             break;
         case Form.Type.call:
-            Array!char name = form.args[0].value.ident.repr;
+            char[] name = form.args[0].value.ident.repr;
             if (name == "add" || name == "sub" || name == "mul" || name == "div" || name == "mod") {
                 if (form.args[1].type == Node.Type.num) {
                     Opcode rhs = compileMaybe(form.args[2], outreg);
@@ -127,6 +128,7 @@ struct Emitter {
                 }
             }
             Array!Opcode kargs;
+            scope(exit) kargs.dealloc();
             Opcode treg = outreg;
             foreach (num, arg; form.args.ptr[1 .. form.args.length]) {
                 Opcode creg = compileMaybe(arg, treg);
@@ -155,7 +157,7 @@ struct Emitter {
             Opcode varreg = compileMaybe(form.args[1], alloc);
             locals[form.args[0].value.ident.repr] = varreg;
             compile(form.args[2], outreg);
-            locals.remove(form.args[0].value.ident.repr);
+            locals.remove(cast(string) form.args[0].value.ident.repr);
             break;
         case Form.Type.and:
         case Form.Type.or:
@@ -238,10 +240,6 @@ struct Emitter {
         ops ~= [opint, outreg, cast(Opcode) num.value];
     }
 
-    void compileType(String str, Opcode outreg) {
-        assert(false);
-    }
-
     Opcode compileMaybe(Node node, Opcode outreg) {
         if (node.type == Node.Type.ident) {
             if (Opcode* ptr = node.value.ident.repr in locals) {
@@ -254,7 +252,7 @@ struct Emitter {
                 Opcode varreg = compileMaybe(form.args[1], alloc);
                 locals[form.args[0].value.ident.repr] = varreg;
                 Opcode ret = compileMaybe(form.args[2], outreg);
-                locals.remove(form.args[0].value.ident.repr);
+                locals.remove(cast(string) form.args[0].value.ident.repr);
                 return ret;
             }
         }
@@ -272,8 +270,6 @@ struct Emitter {
             return compileType(node.value.ident, outreg);
         case Node.Type.num:
             return compileType(node.value.num, outreg);
-        case Node.Type.str:
-            return compileType(node.value.str, outreg);
         }
     }
 }
@@ -285,5 +281,7 @@ Array!Opcode compile(Array!Form forms) {
     }
     emit.ops ~= [opcall, cast(Opcode) 0, cast(Opcode) emit.funcs["main"], cast(Opcode) 0];
     emit.ops ~= opexit;
+    emit.funcs.dealloc();
+    emit.locals.dealloc();
     return emit.ops;
 }

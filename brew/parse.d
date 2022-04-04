@@ -42,28 +42,39 @@ struct ParseState {
 }
 
 struct Binding {
-    Array!char name;
+    char[] name;
     Array!Binding args;
     bool isFunc;
+
+    void dealloc() {
+        if (isFunc) {
+            foreach (arg; args) {
+                arg.dealloc();
+            }
+            args.dealloc();
+        }
+    }
 
     static Binding none() {
         return Binding.init;
     }
 
-    this(Array!char name) {
+    this(char[] name) {
         this.name = name;
         this.isFunc = false;
     }
 
-    this(Array!char name, Array!Binding args) {
+    this(char[] name, Array!Binding args) {
         this.name = name;
         this.isFunc = true;
         this.args = args;
     }
 }
 
+alias Bindings = Table!(Binding, q{});
+
 struct Parser {
-    Table!Binding defs;
+    Bindings defs;
     ParseState state;
 
     void raise(string msg) {
@@ -99,17 +110,17 @@ struct Parser {
         }
     }
 
-    Array!char readName() {
+    char[] readName() {
         skipSpace;
-        Array!char ret;
+        size_t start = state.head;
         while (!state.done) {
             char first = state.first;
             if (!('0' <= first && first <= '9') && !('a' <= first && first <= 'z') && !('A' <= first && first <= 'Z') && first != '-' && first != '_') {
                 break;
             }
-            ret ~= state.read;
+            state.skip;
         }
-        return ret;
+        return state.src.ptr[start..state.head];
     }
 
     Array!Binding readArgArray() {
@@ -127,10 +138,10 @@ struct Parser {
             }
             if (state.first == '(') {
                 state.skip;
-                Array!char name = readName;
+                char[] name = readName;
                 args ~= Binding(name, readArgArray);
             } else {
-                Array!char name = readName;
+                char[] name = readName;
                 skipSpace;
                 args ~= Binding(name);
             }
@@ -143,50 +154,6 @@ struct Parser {
         if (state.done) {
             raise("expected expression at end of file");
             assert(false);
-        }
-        if (state.first == '\"') {
-            state.skip;
-            Array!char value;
-            if (state.done) {
-                raise("expected string literal at end of file");
-                assert(false);
-            }
-            while (state.first != '\"') {
-                char chr = state.read;
-                if (chr == '\\') {
-                    switch (chr) {
-                    case '\'':
-                        value ~= '\'';
-                        break;
-                    case '"':
-                        value ~= '"';
-                        break;
-                    case '\\':
-                        value ~= '\\';
-                        break;
-                    case 't':
-                        value ~= '\t';
-                        break;
-                    case 'n':
-                        value ~= '\n';
-                        break;
-                    case 'r':
-                        value ~= '\r';
-                        break;
-                    default:
-                        raise("unknown escape sequence");
-                        assert(false);
-                    }
-                } else {
-                    value ~= chr;
-                }
-                if (state.done) {
-                    raise("unterminated string literal");
-                    assert(false);
-                }
-            }
-            state.skip;
-            return str(value).node;
         }
         if (state.first == '\'') {
             state.skip;
@@ -239,7 +206,7 @@ struct Parser {
                 assert(false);
             }
         }
-        Array!char name = readName;
+        char[] name = readName;
         scope (exit) {
             if (startsOpenParen) {
                 skipSpace;
@@ -290,7 +257,7 @@ struct Parser {
             Node value = readExprMatch(Binding.none);
             defs[id.repr] = Binding(id.repr);
             Node inscope = readExprMatch(type);
-            defs.remove(id.repr);
+            defs.remove(cast(string) id.repr);
             return form(Form.Type.let, [id.node, value, inscope]).node;
         default:
             if (type.isFunc) {
@@ -301,11 +268,11 @@ struct Parser {
         }
     }
 
-    Node readCall(Array!char name) {
+    Node readCall(char[] name) {
         if (Binding* argTypesPtr = name in defs) {
             if (argTypesPtr.isFunc) {
                 Array!Binding argTypes = argTypesPtr.args;
-                Array!Node argValues = [ident(name).node];
+                Array!Node argValues = Array!Node.alloc([ident(name).node]);
                 foreach (argType; argTypes) {
                     argValues ~= readExprMatch(argType);
                 }
@@ -327,22 +294,23 @@ struct Parser {
         }
     }
 
-    Form readDef() {
+    Form readDef(ref Array!Binding funcs) {
         skipSpace;
         if (state.first != '(') {
             raise("toplevel: expected a function opening paren");
         }
         state.skip;
-        Array!char fname = readName;
+        char[] fname = readName;
         if (fname.length == 0) {
             raise("toplevel: expected a function name");
         }
         Array!Binding vals = readArgArray;
         defs[fname] = Binding(fname, vals);
+        funcs ~= defs[fname];
         foreach (val; vals) {
             defs[val.name] = val;
         }
-        Array!Node argNames = [ident(fname).node];
+        Array!Node argNames = Array!Node.alloc([ident(fname).node]);
         foreach (val; vals) {
             argNames ~= ident(val.name).node;
         }
@@ -357,13 +325,22 @@ struct Parser {
     }
 
     Array!Form readDefs() {
+        defs = typeof(defs).init;
+        scope(exit) defs.dealloc();
+        Array!Binding funcs;
+        scope(exit) {
+            foreach (func; funcs) {
+                func.dealloc();
+            }
+            funcs.dealloc();
+        }
         Array!Form all;
         while (true) {
             skipSpace;
             if (state.done) {
                 break;
             }
-            all ~= readDef;
+            all ~= readDef(funcs);
         }
         return all;
     }
