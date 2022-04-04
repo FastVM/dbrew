@@ -1,0 +1,45 @@
+
+(add x y) ?
+(div x y) ?
+(mod x y) ?
+
+(above x y) ?
+
+(putchar x) ?
+
+(putd n)
+putchar add '0 mod 10 n
+
+(putn n)
+if  above n 9
+    do  putn div 10 n
+        putd n
+    putd n
+
+(fizz)
+do  putchar 'F
+do  putchar 'i
+do  putchar 'z
+    putchar 'z
+
+(buzz)
+do  putchar 'B
+do  putchar 'u
+do  putchar 'z
+    putchar 'z
+
+(fizz-buzz n)
+do  if  mod 3 n
+    if  mod 5 n
+        putn n
+        buzz
+    if  mod 5 n
+        fizz
+        do fizz buzz
+do  putchar '\n
+    if  above 100 n
+        fizz-buzz add 1 n
+        0
+        
+(main)
+fizz-buzz 1

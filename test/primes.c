@@ -6,7 +6,7 @@ typedef long number_t;
 
 number_t is_prime(number_t x) {
     if (x % 2 != 0) {
-        for (number_t n = 3; n * n < x; n+=2) {
+        for (number_t n = 3; n * n <= x; n+=2) {
             if (x % n == 0) {
                 return 0;
             }
