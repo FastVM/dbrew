@@ -33,20 +33,3 @@ enum Opcode opblti = 25;
 enum Opcode opmuli = 26;
 enum Opcode opdivi = 27;
 enum Opcode opmodi = 28;
-
-struct Config {
-    size_t gc_ents;
-    size_t gc_init;
-    size_t gc_shrink;
-}
-
-union Dynamic {
-    size_t num;
-    Dynamic[2]* pair;
-}
-
-extern(C) int vm_run(size_t nops, Opcode* ops);
-
-int runvm(Array!Opcode ops) {
-    return vm_run(ops.length, ops.ptr);
-}

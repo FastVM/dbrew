@@ -45,22 +45,6 @@ struct Array(Type) {
         nalloc = 0;
     }
 
-    // Array!Type dup() {
-    //     Array!Type ret;
-    //     foreach (value; ptr[0 .. length]) {
-    //         ret ~= value;
-    //     }
-    //     return ret;
-    // }
-
-    // Array!Type opSlice(size_t start, size_t end) {
-    //     Array!Type ret;
-    //     foreach (value; ptr[start .. end]) {
-    //         ret ~= value;
-    //     }
-    //     return ret;
-    // }
-
     ref Type opIndex(size_t index) {
         return ptr[index];
     }

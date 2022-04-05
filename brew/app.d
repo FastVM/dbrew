@@ -31,18 +31,15 @@ extern (C) int main(int argc, const(char*)* args) {
 	}
 	size_t count = 1;
 	version (WebAssembly) {
-		bool run = true;
 		bool read = false;
 	} else {
-		bool run = false;
 		bool read = true;
 	}
 	while (args[1][0] == '-') {
 		switch (args[1][1]) {
 		case 'r':
-			run = true;
-			args += 1;
-			break;
+			printf("not supported `-r`, vm not embedded\n");
+			return 1;
 		case 'i':
 			read = false;
 			args += 1;
@@ -106,23 +103,15 @@ extern (C) int main(int argc, const(char*)* args) {
 			return 1;
 		}
 	}
-	if (run) {
-		foreach (i; 0 .. count) {
-			if (int err = runvm(res)) {
-				return err;
-			}
+	{
+		FILE* output = fopen("out.bc", "wb");
+		if (output is null) {
+			printf("could not open file: %s\n", args[1]);
+			return 1;
 		}
-	} else {
-		{
-			FILE* output = fopen("out.bc", "wb");
-			if (output is null) {
-				printf("could not open file: %s\n", args[1]);
-				return 1;
-			}
-			scope (exit)
-				fclose(output);
-			fwrite(res.ptr, Opcode.sizeof, res.length, output);
-		}
+		scope (exit)
+			fclose(output);
+		fwrite(res.ptr, Opcode.sizeof, res.length, output);
 	}
 	return 0;
 }
