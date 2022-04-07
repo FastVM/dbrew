@@ -5,12 +5,6 @@ import brew.ast;
 import brew.vm;
 import brew.opt;
 
-version (WebAssembly) {
-	extern (C) void __assert(const char* msg, const char* file, int line) {
-		printf("ERROR: %s\n", msg);
-	}
-}
-
 Array!Opcode optCompile(Array!char src) {
 	Parser parser = Parser();
 	parser.state = ParseState(src);
@@ -30,16 +24,14 @@ extern (C) int main(int argc, const(char*)* args) {
 		return 1;
 	}
 	size_t count = 1;
-	version (WebAssembly) {
-		bool read = false;
-	} else {
-		bool read = true;
-	}
+	bool read = true;
+	bool run = false;
 	while (args[1][0] == '-') {
 		switch (args[1][1]) {
 		case 'r':
-			printf("not supported `-r`, vm not embedded\n");
-			return 1;
+			run = true;
+			args += 1;
+			break;
 		case 'i':
 			read = false;
 			args += 1;
@@ -84,7 +76,7 @@ extern (C) int main(int argc, const(char*)* args) {
 				}
 			}
 		} else {
-			while (args[1]!is null) {
+			while (args[1] !is null) {
 				if (args[1][0] == '-' && args[1][1] == '-' && args[1][2] == '\0') {
 					args += 1;
 					break;
@@ -103,6 +95,11 @@ extern (C) int main(int argc, const(char*)* args) {
 			return 1;
 		}
 	}
+	if (run)
+	{
+		vm_run(res.length, res.ptr);
+	}
+	else
 	{
 		FILE* output = fopen("out.bc", "wb");
 		if (output is null) {

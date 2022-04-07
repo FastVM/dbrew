@@ -10,6 +10,6 @@ int fib(int n) {
 }
 
 int main() {
-    printf("%i\n", fib(45));
+    printf("%i\n", fib(40));
     return 0;
 }

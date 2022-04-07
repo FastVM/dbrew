@@ -5,7 +5,7 @@ LOPT ?= $(OPT)
 COPT ?= $(OPT)
 DOPT ?= $(OPT)
 
-CFILES := 
+CFILES := minivm/vm/arch/x86.tmp.c
 DFILES := brew/app.d brew/ast.d brew/comp.d brew/opt.d brew/parse.d brew/vm.d brew/util.d
 
 COBJS := $(CFILES:%.c=%.o)
@@ -17,6 +17,9 @@ bin/dbrew: $(COBJS) $(DOBJS)
 
 minivm/minilua: minivm/luajit/src/host/minilua.c
 	$(CC) -o minivm/minilua -lm minivm/luajit/src/host/minilua.c
+
+minivm/vm/arch/x86.tmp.c: .dummy
+	$(MAKE) -C minivm vm/arch/x86.tmp.c
 
 $(DOBJS): $(@:%.o=%.d)
 	$(DC) -betterC $(DOPT) -of$(@) -c $(@:%.o=%.d) $(DFLAGS)

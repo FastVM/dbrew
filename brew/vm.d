@@ -33,3 +33,5 @@ enum Opcode opblti = 25;
 enum Opcode opmuli = 26;
 enum Opcode opdivi = 27;
 enum Opcode opmodi = 28;
+
+extern(C) int vm_run(size_t nops, const(Opcode)* ops);
