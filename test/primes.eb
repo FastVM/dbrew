@@ -34,7 +34,7 @@ if  mod 2 x
 
 (loop n res)
 let tmp if is-prime n n 0
-    if  lt 10000000 n
+    if  lt 1000000 n
         loop add 2 n add tmp res
         res
 

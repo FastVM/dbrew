@@ -53,8 +53,8 @@ struct Emitter {
             if (form.args[0].type == Node.Type.num) {
                 ops ~= [opreti, cast(Opcode) form.args[0].value.num.value];
             } else {
-                Opcode ret = compileMaybe(form.args[0], 0);
-                ops ~= [opret, ret];
+                compile(form.args[0], 0);
+                ops ~= [opret, 0];
             }
             break;
         case Form.Type.func:

@@ -19,7 +19,7 @@ number_t is_prime(number_t x) {
 
 
 int main() {
-    number_t max = 10000000;
+    number_t max = 1000000;
     number_t res = 2;
     for (number_t n = 3; n < max; n += 2) {
         if (is_prime(n)) {
