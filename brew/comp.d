@@ -15,8 +15,8 @@ struct Emitter {
 
     Opcode alloc() {
         Opcode ret = nregs++;
-        if (ret > nregsMax) {
-            nregsMax = ret;
+        if (nregs > nregsMax) {
+            nregsMax = nregs;
         }
         return ret;
     }
