@@ -18,20 +18,10 @@ enum Opcode opcall = 10;
 enum Opcode opret = 11;
 enum Opcode opputchar = 12;
 enum Opcode opbb = 13;
-
-
+enum Opcode opbeq = 14;
+enum Opcode opblt = 15;
 enum Opcode opdcall = 16;
 enum Opcode opintf = 17;
-enum Opcode opbeq = 18;
-enum Opcode opblt = 19;
-enum Opcode opaddi = 20;
-enum Opcode opsubi = 21;
-enum Opcode optcall = 22;
-enum Opcode opreti = 23;
-enum Opcode opbeqi = 24;
-enum Opcode opblti = 25;
-enum Opcode opmuli = 26;
-enum Opcode opdivi = 27;
-enum Opcode opmodi = 28;
+enum Opcode optcall = 18;
 
 extern(C) int vm_run(size_t nops, const(Opcode)* ops);

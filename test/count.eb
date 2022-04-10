@@ -20,5 +20,5 @@ if lt n 9
     putd n
 
 (main)
-do  putd 0
+do  putn 1234
     putchar '\n
