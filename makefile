@@ -15,7 +15,7 @@ DOBJS := $(DFILES:%.d=%.o)
 
 bin/dbrew: $(DASCOBJS) $(COBJS) $(DOBJS)
 	mkdir -p bin
-	$(CC) $(LOPT) $(DASCOBJS) $(COBJS) $(DOBJS) -o $(@) $(LFLAGS)
+	$(CC) $(LOPT) $(DASCOBJS) $(COBJS) $(DOBJS) -o $(@) $(LDFLAGS)
 
 minivm/bin/luajit-minilua: minivm/luajit/src/host/minilua.c
 	$(CC) -o $(@) minivm/luajit/src/host/minilua.c -lm
