@@ -2,9 +2,9 @@
 #include <stddef.h>
 #include <stdio.h>
 
-typedef long number_t;
+typedef size_t number_t;
 
-number_t is_prime(number_t x) {
+static number_t is_prime(number_t x) {
     if (x % 2 != 0) {
         for (number_t n = 3; n * n <= x; n+=2) {
             if (x % n == 0) {
