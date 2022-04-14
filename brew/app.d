@@ -128,12 +128,14 @@ extern (C) int main(int argc, const(char*)* args) {
 	if (run) {
 		version (WebAssembly) {
 			vm_run_arch_int(res.length, res.ptr);
-		} else {
+		} else version (X86_64) {
 			if (jit) {
 				vm_run_arch_x86(res.length, res.ptr);
 			} else {
 				vm_run_arch_int(res.length, res.ptr);
 			}
+		} else {
+			vm_run_arch_int(res.length, res.ptr);
 		}
 	} else {
 		FILE* output = fopen("out.bc", "wb");
