@@ -20,7 +20,7 @@ jobs:
       - run: cp minivm/bin/{minivm,minivm-color,minivm-dis} bin/
       - uses: actions/upload-artifact@v2
         with:
-          name: minivm-linux
+          name: dbrew-linux
           path: |
             bin/*
           if-no-files-found: error
@@ -45,10 +45,9 @@ jobs:
           actions-cache-folder: ${{env.EM_CACHE_FOLDER}}
       - run: make -C minivm CC=cc OPT='-Os'
       - run: env ./wasm.sh
-      - run: cp minivm/bin/{minivm,minivm-color,minivm-dis} bin/
       - uses: actions/upload-artifact@v2
         with:
-          name: minivm-linux
+          name: dbrew-wasm
           path: |
-            bin/*
+            bin/dbrew.wasm
           if-no-files-found: error
