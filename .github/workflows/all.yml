@@ -6,8 +6,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          submodules: true
-          recursive: true
+          submodules: recursive
       - run: make -C minivm CC=cc OPT='-Os'
       - run: make
       - uses: actions/upload-artifact@v2
