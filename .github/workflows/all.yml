@@ -1,5 +1,10 @@
 name: Builds
 on: [push]
+
+env:
+  EM_VERSION: 1.39.18
+  EM_CACHE_FOLDER: 'emsdk-cache'
+
 jobs:
   linux:
     runs-on: ubuntu-latest
