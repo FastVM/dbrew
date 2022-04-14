@@ -33,10 +33,9 @@ if  mod 2 x
     0
 
 (loop n res)
-let tmp if is-prime n n 0
-    if  lt n 1000000
-        res
-        loop add 2 n add tmp res
+if  lt n 10000000
+    res
+    loop add 2 n add is-prime n res
 
 (main)
-    putnln loop 3 2
+    putnln loop 3 1

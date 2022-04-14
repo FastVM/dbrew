@@ -5,11 +5,20 @@ import brew.ast;
 import brew.vm;
 import brew.opt;
 
+version (WebAssembly) {
+	extern (C) void exit(int c);
+
+	extern (C) void __assert(const(char)* msg, const(char)* file, int line) {
+		printf("err (file: %s, line: %i): %s\n", file, line, msg);
+		exit(1);
+	}
+}
+
 Array!Opcode optCompile(Array!char src) {
 	Parser parser = Parser();
 	parser.state = ParseState(src);
 	Array!Form ast = parser.readDefs();
-	scope(exit) {
+	scope (exit) {
 		foreach (form; ast) {
 			form.dealloc();
 		}
@@ -24,8 +33,8 @@ extern (C) int main(int argc, const(char*)* args) {
 		return 1;
 	}
 	size_t count = 1;
-	bool read = true;
 	bool run = true;
+	bool read = true;
 	bool jit = true;
 	while (args[1][0] == '-') {
 		switch (args[1][1]) {
@@ -62,18 +71,28 @@ extern (C) int main(int argc, const(char*)* args) {
 		}
 	}
 	Array!Opcode res;
-	scope(exit) res.dealloc;
+	scope (exit)
+		res.dealloc;
 	{
 		Array!char src;
-		scope(exit) src.dealloc();
+		scope (exit)
+			src.dealloc();
 		if (read) {
-			FILE* fp = fopen(args[1], "r");
+			FILE* fp;
+			if (args[1] == "/dev/stdin") {
+				fp = stdin;
+			} else {
+				fp = fopen(args[1], "r");
+			}
 			if (fp is null) {
 				printf("could not open file: %s\n", args[1]);
 				return 1;
 			}
-			scope (exit)
-				fclose(fp);
+			scope (exit) {
+				if (fp != stdin) {
+					fclose(fp);
+				}
+			}
 			while (true) {
 				char[2048] buf;
 				size_t got = fread(buf.ptr, char.sizeof, 2048, fp);
@@ -87,7 +106,7 @@ extern (C) int main(int argc, const(char*)* args) {
 				}
 			}
 		} else {
-			while (args[1] !is null) {
+			while (args[1]!is null) {
 				if (args[1][0] == '-' && args[1][1] == '-' && args[1][2] == '\0') {
 					args += 1;
 					break;
@@ -106,16 +125,17 @@ extern (C) int main(int argc, const(char*)* args) {
 			return 1;
 		}
 	}
-	if (run)
-	{
-		if (jit) {
-			vm_run_arch_x86(res.length, res.ptr);
-		} else {
+	if (run) {
+		version (WebAssembly) {
 			vm_run_arch_int(res.length, res.ptr);
+		} else {
+			if (jit) {
+				vm_run_arch_x86(res.length, res.ptr);
+			} else {
+				vm_run_arch_int(res.length, res.ptr);
+			}
 		}
-	}
-	else
-	{
+	} else {
 		FILE* output = fopen("out.bc", "wb");
 		if (output is null) {
 			printf("could not open file: %s\n", args[1]);

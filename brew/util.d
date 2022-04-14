@@ -3,8 +3,10 @@ module brew.util;
 extern (C) {
     struct FILE;
 
-    int printf(const(char)* format, ...);
+    FILE *stdin;
 
+    int printf(const(char)* format, ...);
+    
     FILE* fopen(const(char)* path, const(char)* attr);
     int fclose(FILE* file);
     size_t fread(void* ptr, size_t size, size_t count, FILE* file);
@@ -13,6 +15,20 @@ extern (C) {
     void* malloc(size_t size);
     void* realloc(void* ptr, size_t size);
     void free(void* ptr);
+
+}
+
+bool streq(const(char)* str1, const(char)* str2) {
+    while (true) {
+        if (*str1 != *str2) {
+            return false;
+        }
+        if (*str1 == '\0') {
+            return true;
+        }
+        str1 += 1;
+        str2 += 1;
+    }
 }
 
 struct Array(Type) {
@@ -128,7 +144,7 @@ ubyte charno(char c) {
     assert(false);
 }
 
-struct Table(Type, string dealloc1=``) {
+struct Table(Type, string dealloc1 = ``) {
     Table!Type[64]* values;
     Type value;
     bool has;

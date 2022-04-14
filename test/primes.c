@@ -19,12 +19,10 @@ static number_t is_prime(number_t x) {
 
 
 int main() {
-    number_t max = 1000000;
-    number_t res = 2;
+    number_t max = 10000000;
+    number_t res = 1;
     for (number_t n = 3; n < max; n += 2) {
-        if (is_prime(n)) {
-            res += n;
-        }
+        res += is_prime(n);
     }
     printf("%zu\n", res);
     return 0;
