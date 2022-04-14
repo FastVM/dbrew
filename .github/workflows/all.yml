@@ -1,0 +1,19 @@
+name: Builds
+on: [push]
+jobs:
+  linux-opt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - run: make -C minivm CC=cc OPT='-Os'
+      - run: make
+      - uses: actions/upload-artifact@v2
+        with:
+          name: minivm-linux
+          path:
+            bin/dbrew
+            minivm/bin/minivm
+            minivm/bin/minivm-color
+            minivm/bin/minivm-dis
