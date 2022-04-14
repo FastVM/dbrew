@@ -12,7 +12,7 @@ jobs:
           compiler: ldc-latest
       - run: make -C minivm CC=cc OPT='-Os'
       - run: make DC=ldc2
-      - run: cp minivm/bin/* bin/
+      - run: cp minivm/bin/{minivm,minivm-color,minivm-dis} bin/
       - uses: actions/upload-artifact@v2
         with:
           name: minivm-linux
