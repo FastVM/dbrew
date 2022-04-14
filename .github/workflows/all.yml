@@ -1,7 +1,7 @@
 name: Builds
 on: [push]
 jobs:
-  linux-opt:
+  linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -12,6 +12,34 @@ jobs:
           compiler: ldc-latest
       - run: make -C minivm CC=cc OPT='-Os'
       - run: make DC=ldc2
+      - run: cp minivm/bin/{minivm,minivm-color,minivm-dis} bin/
+      - uses: actions/upload-artifact@v2
+        with:
+          name: minivm-linux
+          path: |
+            bin/*
+          if-no-files-found: error
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - uses: dlang-community/setup-dlang@v1
+        with:
+          compiler: ldc-latest
+      - name: Setup cache
+        id: cache-system-libraries
+        uses: actions/cache@v2
+        with:
+          path: ${{env.EM_CACHE_FOLDER}}
+          key: ${{env.EM_VERSION}}-${{ runner.os }}
+      - uses: mymindstorm/setup-emsdk@v11
+        with:
+          version: ${{env.EM_VERSION}}
+          actions-cache-folder: ${{env.EM_CACHE_FOLDER}}
+      - run: make -C minivm CC=cc OPT='-Os'
+      - run: env ./wasm.sh
       - run: cp minivm/bin/{minivm,minivm-color,minivm-dis} bin/
       - uses: actions/upload-artifact@v2
         with:
