@@ -1,0 +1,17 @@
+
+(add y x) ?
+(sub y x) ?
+(mul y x) ?
+(div y x) ?
+(mod y x) ?
+
+(putchar c) ?
+
+(loop n k)
+if  n
+    loop sub 1 n add 2 k
+    k
+
+(main)
+do  putchar add '0 mod 10 loop 1000000001 0
+    putchar '\n

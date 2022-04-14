@@ -6,7 +6,7 @@ COPT ?= $(OPT)
 DOPT ?= $(OPT)
 
 DASCFILES := minivm/vm/arch/x86.dasc
-CFILES := minivm/vm/jump.c
+CFILES := minivm/vm/jump.c minivm/vm/arch/int.c
 DFILES := brew/app.d brew/ast.d brew/comp.d brew/opt.d brew/parse.d brew/vm.d brew/util.d
 
 DASCOBJS := $(DASCFILES:%.dasc=%.o)
@@ -22,7 +22,7 @@ minivm/bin/luajit-minilua: minivm/luajit/src/host/minilua.c
 
 $(DASCOBJS): $(@:%.o=%.dasc) | minivm/bin/luajit-minilua
 	minivm/bin/luajit-minilua minivm/luajit/dynasm/dynasm.lua -o $(@:%.o=%.tmp.c) $(@:%.o=%.dasc)
-	$(CC) $(COPT) -o $(@) -c $(@:%.o=%.tmp.c)
+	$(CC) $(COPT) -o $(@) -c $(@:%.o=%.tmp.c) $(CFLAGS)
 
 $(DOBJS): $(@:%.o=%.d)
 	$(DC) -betterC $(DOPT) -of$(@) -c $(@:%.o=%.d) $(DFLAGS)

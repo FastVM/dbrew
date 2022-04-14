@@ -25,11 +25,12 @@ extern (C) int main(int argc, const(char*)* args) {
 	}
 	size_t count = 1;
 	bool read = true;
-	bool run = false;
+	bool run = true;
+	bool jit = true;
 	while (args[1][0] == '-') {
 		switch (args[1][1]) {
-		case 'r':
-			run = true;
+		case 'd':
+			run = false;
 			args += 1;
 			break;
 		case 'i':
@@ -44,6 +45,16 @@ extern (C) int main(int argc, const(char*)* args) {
 				count += args[1][index] - '0';
 			}
 			args += 1;
+			break;
+		case 'j':
+			if (args[1][2] == 'o' && args[1][3] == 'n' && args[1][4] == '\0') {
+				jit = true;
+				args += 1;
+			}
+			if (args[1][2] == 'o' && args[1][3] == 'f' && args[1][4] == 'f' && args[1][5] == '\0') {
+				jit = false;
+				args += 1;
+			}
 			break;
 		default:
 			printf("unknown option: %s\n", args[1]);
@@ -97,7 +108,11 @@ extern (C) int main(int argc, const(char*)* args) {
 	}
 	if (run)
 	{
-		vm_run(res.length, res.ptr);
+		if (jit) {
+			vm_run_arch_x86(res.length, res.ptr);
+		} else {
+			vm_run_arch_int(res.length, res.ptr);
+		}
 	}
 	else
 	{

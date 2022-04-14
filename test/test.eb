@@ -19,7 +19,9 @@ if lt n 9
         putd n
     putd n
 
-(main)
+(rt (vmain)) vmain
+
+(vmain)
 let x 7
 let y 3
 do  putn mul y x
@@ -28,3 +30,6 @@ do  putn div y x
 do  putchar '\n
 do  putn mod y x
     putchar '\n
+
+(main)
+rt vmain

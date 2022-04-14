@@ -24,4 +24,5 @@ enum Opcode opdcall = 16;
 enum Opcode opintf = 17;
 enum Opcode optcall = 18;
 
-extern(C) int vm_run(size_t nops, const(Opcode)* ops);
+extern(C) int vm_run_arch_int(size_t nops, const(Opcode)* ops);
+extern(C) int vm_run_arch_x86(size_t nops, const(Opcode)* ops);
