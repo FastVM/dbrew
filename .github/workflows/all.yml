@@ -24,6 +24,24 @@ jobs:
           path: |
             bin/*
           if-no-files-found: error
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - uses: dlang-community/setup-dlang@v1
+        with:
+          compiler: ldc-latest
+      - run: make -C minivm CC=cc OPT='-Os'
+      - run: make DC=ldc2
+      - run: cp minivm/bin/{minivm,minivm-color,minivm-dis} bin/
+      - uses: actions/upload-artifact@v2
+        with:
+          name: dbrew-mac
+          path: |
+            bin/*
+          if-no-files-found: error
   wasm:
     runs-on: ubuntu-latest
     steps:
