@@ -12,11 +12,10 @@ jobs:
           compiler: ldc-latest
       - run: make -C minivm CC=cc OPT='-Os'
       - run: make DC=ldc2
+      - run: cp minivm/bin/* bin/
       - uses: actions/upload-artifact@v2
         with:
           name: minivm-linux
           path: |
-            bin/dbrew
-            minivm/bin/minivm
-            minivm/bin/minivm-color
-            minivm/bin/minivm-dis
+            bin/*
+          if-no-files-found: error
