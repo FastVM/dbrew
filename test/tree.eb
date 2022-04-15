@@ -1,0 +1,76 @@
+
+(add x y) ?
+(sub x y) ?
+(mul x y) ?
+(div x y) ?
+(mod x y) ?
+
+(equal x y) ?
+(above x y) ?
+
+(pair x y) ?
+(first p) ?
+(second p) ?
+
+(putchar x) ?
+
+(putd n)
+putchar add '0 mod 10 n
+
+(putn n)
+if above n 9
+    do  putn div 10 n
+        putd n
+    putd n
+
+(putnln n)
+do  putn n
+    putchar '\n
+
+(pow2 n)
+if  n
+    mul 2 pow2 sub 1 n
+    2
+
+(item-check tree) 
+let n1 first tree
+let n2 second tree
+if  n2
+    add n1 sub item-check second n2 item-check first n2 
+    n1
+
+(new-tree item depth)
+if depth
+    let i add item item
+        let left  new-tree sub 1 i sub 1 depth 
+        let right new-tree i       sub 1 depth
+        pair item pair left right
+    pair item 0
+
+(loop-times check iters maxiter depth)
+if  above maxiter iters
+    let tree1 new-tree 1 depth
+    let c1 add check item-check tree1
+    let tree2 new-tree sub 1 0 depth
+    let c2 add check item-check tree2
+        loop-times c2 add 1 iters maxiter depth
+    check
+
+(loop-depth mindepth depth maxdepth)
+if  above add 1 maxdepth depth
+    do  putchar '-
+    do  putnln loop-times 0 0 pow2 add sub depth maxdepth mindepth depth
+        loop-depth mindepth add 2 depth maxdepth
+    0
+    
+(main) 
+let max 12
+let sdepth add 1 max
+let tree new-tree 0 sdepth
+do  putchar '-
+do  putnln sub item-check tree 0
+let old-tree new-tree 0 4
+do  loop-depth 4 4 max
+do  putchar '-
+do  putnln sub item-check old-tree 0
+    0
