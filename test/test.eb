@@ -5,8 +5,12 @@
 (div x y) ?
 (mod x y) ?
 
-(eq x y) ?
-(lt x y) ?
+(equal x y) ?
+(above x y) ?
+
+(pair x y) ?
+(first p) ?
+(second p) ?
 
 (putchar x) ?
 
@@ -14,22 +18,13 @@
 putchar add '0 mod 10 n
 
 (putn n)
-if lt n 9
+if above n 9
     do  putn div 10 n
         putd n
     putd n
 
-(rt (vmain)) vmain
-
-(vmain)
-let x 7
-let y 3
-do  putn mul y x
-do  putchar '\n
-do  putn div y x
-do  putchar '\n
-do  putn mod y x
-    putchar '\n
-
 (main)
-rt vmain
+do  putn 333
+do  putchar '\n
+do  putn second pair 10 200
+    putchar '\n

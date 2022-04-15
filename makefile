@@ -8,24 +8,15 @@ LOPT ?= $(OPT)
 COPT ?= $(OPT)
 DOPT ?= $(OPT)
 
-DASCFILES ?= minivm/vm/arch/x86.dasc
-CFILES := minivm/vm/jump.c minivm/vm/arch/int.c
+CFILES := minivm/vm/jump.c minivm/vm/int.c
 DFILES := brew/app.d brew/ast.d brew/comp.d brew/opt.d brew/parse.d brew/vm.d brew/util.d
 
-DASCOBJS := $(DASCFILES:%.dasc=%.o)
 COBJS := $(CFILES:%.c=%.o)
 DOBJS := $(DFILES:%.d=%.o)
 
-bin/dbrew: $(DASCOBJS) $(COBJS) $(DOBJS)
+bin/dbrew: $(COBJS) $(DOBJS)
 	mkdir -p bin
-	$(CC) $(LOPT) $(DASCOBJS) $(COBJS) $(DOBJS) -o $(@) $(LDFLAGS)
-
-minivm/bin/luajit-minilua: minivm/luajit/src/host/minilua.c
-	$(CCLUA) -o $(@) minivm/luajit/src/host/minilua.c -lm
-
-$(DASCOBJS): $(@:%.o=%.dasc) | minivm/bin/luajit-minilua
-	minivm/bin/luajit-minilua minivm/luajit/dynasm/dynasm.lua -o $(@:%.o=%.tmp.c) $(@:%.o=%.dasc)
-	$(CC) $(COPT) -o $(@) -c $(@:%.o=%.tmp.c) $(CFLAGS)
+	$(CC) $(LOPT) $(COBJS) $(DOBJS) -o $(@) $(LDFLAGS)
 
 $(DOBJS): $(@:%.o=%.d)
 	$(DC) -betterC $(DOPT) -of$(@) -c $(@:%.o=%.d) $(DFLAGS)

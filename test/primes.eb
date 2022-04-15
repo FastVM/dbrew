@@ -33,7 +33,7 @@ if  mod 2 x
     0
 
 (loop n res)
-if  lt n 10000000
+if  lt n 1000000
     res
     loop add 2 n add is-prime n res
 

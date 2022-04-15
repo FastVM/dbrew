@@ -18,7 +18,7 @@ const is_prime = function(x) {
 };
 
 const main = function () {
-    const max = 10000000;
+    const max = 1000000;
     let res = 1;
     for (let n=3; n < max; n += 2) { 
         if (is_prime(n)) {

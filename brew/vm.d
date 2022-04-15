@@ -23,6 +23,8 @@ enum Opcode opblt = 15;
 enum Opcode opdcall = 16;
 enum Opcode opintf = 17;
 enum Opcode optcall = 18;
+enum Opcode oppair = 19;
+enum Opcode opfirst = 20;
+enum Opcode opsecond = 21;
 
 extern(C) int vm_run_arch_int(size_t nops, const(Opcode)* ops);
-extern(C) int vm_run_arch_x86(size_t nops, const(Opcode)* ops);

@@ -120,6 +120,21 @@ struct Emitter {
                 ops ~= [opputchar];
                 ops ~= kargs;
                 break;
+            } else if (name == "pair") {
+                ops ~= [oppair];
+                ops ~= outreg;
+                ops ~= kargs;
+                break;
+            } else if (name == "first") {
+                ops ~= [opfirst];
+                ops ~= outreg;
+                ops ~= kargs;
+                break;
+            } else if (name == "second") {
+                ops ~= [opsecond];
+                ops ~= outreg;
+                ops ~= kargs;
+                break;
             } else {
                 printf("name not found: %.*s\n", name.length, name.ptr);
                 assert(false);

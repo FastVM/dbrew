@@ -1,0 +1,15 @@
+(putchar x) ?
+
+(main)
+do  putchar 'H
+do  putchar 'e
+do  putchar 'l
+do  putchar 'l
+do  putchar 'o
+do  putchar ' 
+do  putchar 'W
+do  putchar 'o
+do  putchar 'r
+do  putchar 'l
+do  putchar 'd
+    putchar '\n

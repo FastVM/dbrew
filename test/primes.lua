@@ -18,7 +18,7 @@ local function is_prime(x)
 end
 
 local function main()
-    local max = 10000000
+    local max = 1000000
     local res = 1
     for n=3, max, 2 do
         if is_prime(n) then
