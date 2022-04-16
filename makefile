@@ -8,7 +8,7 @@ LOPT ?= $(OPT)
 COPT ?= $(OPT)
 DOPT ?= $(OPT)
 
-CFILES := minivm/vm/jump.c minivm/vm/int.c
+CFILES := minivm/vm/jump.c minivm/vm/int.c minivm/vm/gc.c
 DFILES := brew/app.d brew/ast.d brew/comp.d brew/opt.d brew/parse.d brew/vm.d brew/util.d
 
 COBJS := $(CFILES:%.c=%.o)

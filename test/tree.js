@@ -26,12 +26,8 @@ function pow2(n) {
     }
 }
 
-let N = 12;
 let mindepth = 4;
-let maxdepth = mindepth + 2;
-if (maxdepth < N) {
-    maxdepth = N;
-}
+let maxdepth = 16;
 
 let stretchdepth = maxdepth + 1;
 let tree = bottom_up_tree(0, stretchdepth);

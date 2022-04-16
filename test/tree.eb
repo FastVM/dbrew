@@ -64,12 +64,12 @@ if  above add 1 maxdepth depth
     0
     
 (main) 
-let max 12
+let max 16
 let sdepth add 1 max
 let tree new-tree 0 sdepth
 do  putchar '-
 do  putnln sub item-check tree 0
-let old-tree new-tree 0 4
+let old-tree new-tree 0 max
 do  loop-depth 4 4 max
 do  putchar '-
 do  putnln sub item-check old-tree 0
