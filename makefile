@@ -18,6 +18,8 @@ bin/dbrew: $(COBJS) $(DOBJS)
 	mkdir -p bin
 	$(CC) $(LOPT) $(COBJS) $(DOBJS) -o $(@) $(LDFLAGS)
 
+objs: $(COBJS) $(DOBJS)
+
 $(DOBJS): $(@:%.o=%.d)
 	$(DC) -betterC $(DOPT) -of$(@) -c $(@:%.o=%.d) $(DFLAGS)
 
